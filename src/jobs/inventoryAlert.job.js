@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file inventoryAlert.job.js
- */
-
 const ProductVariant = require('../modules/variant/variant.model');
 const { sendLowStockAlertEmail } = require('../services/email.service');
 const { redisClient, isAvailable } = require('../config/redis');

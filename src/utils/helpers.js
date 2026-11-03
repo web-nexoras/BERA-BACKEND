@@ -67,7 +67,7 @@ function generateSecureToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString('hex');
 }
 
-// SHA-256 hash for safe DB storage of tokens
+// Store token hashes, not raw tokens.
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }

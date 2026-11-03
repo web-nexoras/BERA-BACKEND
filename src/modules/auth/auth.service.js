@@ -11,11 +11,9 @@ const logger = require('../../utils/logger');
 const { hashToken } = require('../../utils/helpers');
 const emailService = require('../../services/email.service');
 
-// sign access token
 const signAccessToken = (user) =>
   jwt.sign({ id: user._id.toString(), role: user.role, email: user.email }, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_EXPIRES_IN });
 
-// sign refresh token
 const signRefreshToken = (user) =>
   jwt.sign({ id: user._id.toString() }, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES_IN });
 
@@ -24,7 +22,6 @@ const generateTokenPair = (user) => ({
   refreshToken: signRefreshToken(user),
 });
 
-// register new customer
 async function register(data) {
   const { name, email, password, phone } = data;
 
@@ -45,7 +42,6 @@ async function register(data) {
   return user.toJSON();
 }
 
-// login
 async function login(email, password) {
   const user = await User.findByEmail(email).select('+password +refreshTokens');
   if (!user) throw new AppError('Invalid email or password.', StatusCodes.UNAUTHORIZED);
@@ -63,7 +59,6 @@ async function login(email, password) {
   return { user: user.toJSON(), accessToken, refreshToken };
 }
 
-// verify email
 async function verifyEmail(rawToken) {
   const hashed = hashToken(rawToken);
   const user = await User.findOne({
@@ -83,7 +78,7 @@ async function verifyEmail(rawToken) {
   return user.toJSON();
 }
 
-// forgot password – always returns success (don't reveal if email exists)
+// Don't reveal whether an email exists.
 async function forgotPassword(email) {
   const user = await User.findByEmail(email);
   if (!user) return;
@@ -102,7 +97,6 @@ async function forgotPassword(email) {
   }
 }
 
-// reset password
 async function resetPassword(rawToken, password) {
   const hashed = hashToken(rawToken);
   const user = await User.findOne({
@@ -121,7 +115,7 @@ async function resetPassword(rawToken, password) {
   return user.toJSON();
 }
 
-// refresh access token (token rotation)
+// Rotate refresh tokens.
 async function refreshAccessToken(refreshToken) {
   let decoded;
   try {
@@ -146,14 +140,12 @@ async function refreshAccessToken(refreshToken) {
   return tokens;
 }
 
-// logout – remove refresh token
 async function logout(userId, refreshToken) {
   if (!refreshToken) return;
   const hashed = hashToken(refreshToken);
   await User.findByIdAndUpdate(userId, { $pull: { refreshTokens: hashed } });
 }
 
-// change password for logged-in user
 async function changePassword(userId, currentPassword, newPassword) {
   const user = await User.findById(userId).select('+password +refreshTokens');
   if (!user) throw new AppError('User not found.', StatusCodes.NOT_FOUND);

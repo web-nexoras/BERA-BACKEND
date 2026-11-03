@@ -1,30 +1,12 @@
 'use strict';
 
-/**
- * @file coupon.validation.js
- * @description Zod validation schemas for coupon endpoints.
- */
-
 const { z } = require('zod');
 
-// ---------------------------------------------------------------------------
-// Reusable helpers
-// ---------------------------------------------------------------------------
-
-/** Validates a MongoDB ObjectId string */
 const objectId = z
   .string({ required_error: 'ID is required' })
   .length(24, 'Must be a valid 24-character ObjectId')
   .regex(/^[a-f\d]{24}$/i, 'Must be a valid ObjectId');
 
-// ---------------------------------------------------------------------------
-// Schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for creating a coupon (admin).
- * POST /api/v1/coupons
- */
 const createCouponSchema = z
   .object({
     code: z
@@ -74,10 +56,6 @@ const createCouponSchema = z
     { message: 'Percentage value cannot exceed 100', path: ['value'] }
   );
 
-/**
- * Schema for updating a coupon (admin) — all fields optional.
- * PUT /api/v1/coupons/:id
- */
 const updateCouponSchema = z
   .object({
     code: z.string().trim().min(2).max(50).toUpperCase().optional(),
@@ -106,10 +84,6 @@ const updateCouponSchema = z
     { message: 'Percentage value cannot exceed 100', path: ['value'] }
   );
 
-/**
- * Schema for validating / applying a coupon (customer).
- * POST /api/v1/coupons/validate
- */
 const applyCouponSchema = z.object({
   code: z
     .string({ required_error: 'Coupon code is required' })
@@ -121,17 +95,9 @@ const applyCouponSchema = z.object({
     .min(0, 'Order amount cannot be negative'),
 });
 
-/**
- * Schema for route params that include a coupon id.
- * GET/PUT/DELETE /api/v1/coupons/:id
- */
 const couponIdSchema = z.object({
   id: objectId,
 });
-
-// ---------------------------------------------------------------------------
-// Export
-// ---------------------------------------------------------------------------
 
 module.exports = {
   createCouponSchema,

@@ -1,16 +1,11 @@
 'use strict';
 
-/**
- * @file product.controller.js
- */
-
 const { StatusCodes } = require('http-status-codes');
 const productService = require('./product.service');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');
 const asyncHandler = require('../../utils/asyncHandler');
 const multer = require('multer');
 
-// Multer setup for memory storage (files go to Cloudinary)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const getProducts = asyncHandler(async (req, res) => {

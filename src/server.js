@@ -20,7 +20,6 @@ async function bootstrap() {
   try {
     await connectDB();
 
-    // seed default shipping zones if not present
     try {
       const { seedDefaultZones } = require('./modules/shipping/shipping.service');
       await seedDefaultZones();
@@ -48,7 +47,7 @@ async function bootstrap() {
         } catch {}
         process.exit(0);
       });
-      // force exit if shutdown takes too long
+      // Force exit after shutdown timeout.
       setTimeout(() => { logger.error('Forced shutdown after timeout'); process.exit(1); }, 10_000);
     };
 

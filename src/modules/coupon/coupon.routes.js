@@ -8,10 +8,8 @@ const { isAdmin } = require('../../middlewares/adminMiddleware');
 const { validateBody, validateParams } = require('../../middlewares/validateMiddleware');
 const { createCouponSchema, updateCouponSchema, couponIdSchema } = require('./coupon.validation');
 
-// Customer
 router.post('/validate', authenticate, couponController.validateCoupon);
 
-// Admin
 router.get('/', authenticate, isAdmin, couponController.getCoupons);
 router.get('/:id', authenticate, isAdmin, validateParams(couponIdSchema), couponController.getCouponById);
 router.post('/', authenticate, isAdmin, validateBody(createCouponSchema), couponController.createCoupon);

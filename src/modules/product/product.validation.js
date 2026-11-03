@@ -1,15 +1,6 @@
 'use strict';
 
-/**
- * @file product.validation.js
- * @description Zod validation schemas for all product-related endpoints.
- */
-
 const { z } = require('zod');
-
-// ---------------------------------------------------------------------------
-// Reusable primitives
-// ---------------------------------------------------------------------------
 
 const objectIdSchema = z
   .string()
@@ -19,13 +10,6 @@ const positiveNumber = z.coerce
   .number({ invalid_type_error: 'Must be a number' })
   .nonnegative('Value cannot be negative');
 
-// ---------------------------------------------------------------------------
-// Product schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for creating a new product.
- */
 const createProductSchema = z.object({
   name: z
     .string({ required_error: 'Product name is required' })
@@ -76,21 +60,10 @@ const createProductSchema = z.object({
     .default('draft'),
 });
 
-/**
- * Schema for updating an existing product.
- * All fields are optional.
- */
 const updateProductSchema = createProductSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
 
-// ---------------------------------------------------------------------------
-// Variant schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for a single product variant object.
- */
 const variantSchema = z.object({
   size: z.string().trim().optional().default(''),
   color: z.string().trim().optional().default(''),
@@ -118,9 +91,6 @@ const variantSchema = z.object({
   weight: z.coerce.number().min(0).optional().default(0),
 });
 
-/**
- * Schema for bulk-adding variants to a product.
- */
 const addVariantsSchema = z.object({
   variants: z
     .array(variantSchema)
@@ -128,10 +98,6 @@ const addVariantsSchema = z.object({
     .max(50, 'Cannot add more than 50 variants at once'),
 });
 
-/**
- * Schema for updating a single variant.
- * All variant fields are optional.
- */
 const updateVariantSchema = variantSchema
   .omit({ sku: true })
   .extend({
@@ -140,13 +106,6 @@ const updateVariantSchema = variantSchema
   })
   .partial();
 
-// ---------------------------------------------------------------------------
-// Query schema for product listing
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for GET /products query parameters.
- */
 const productQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -196,10 +155,6 @@ const productQuerySchema = z.object({
   status: z.enum(['draft', 'active', 'inactive', 'out_of_stock']).optional(),
 });
 
-// ---------------------------------------------------------------------------
-// Param schemas
-// ---------------------------------------------------------------------------
-
 const productIdSchema = z.object({
   id: objectIdSchema,
 });
@@ -214,9 +169,6 @@ const productImageParamsSchema = z.object({
   imageId: objectIdSchema,
 });
 
-// ---------------------------------------------------------------------------
-// Export
-// ---------------------------------------------------------------------------
 module.exports = {
   createProductSchema,
   updateProductSchema,

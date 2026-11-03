@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file shipping.controller.js
- */
-
 const asyncHandler = require('../../utils/asyncHandler');
 const shippingService = require('./shipping.service');
 const { successResponse } = require('../../utils/apiResponse');

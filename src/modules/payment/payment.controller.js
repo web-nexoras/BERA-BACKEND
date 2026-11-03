@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file payment.controller.js
- */
-
 const asyncHandler = require('../../utils/asyncHandler');
 const paymentService = require('./payment.service');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');

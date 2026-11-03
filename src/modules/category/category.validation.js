@@ -1,28 +1,11 @@
 'use strict';
 
-/**
- * @file category.validation.js
- * @description Zod validation schemas for category endpoints.
- */
-
 const { z } = require('zod');
 
-// ---------------------------------------------------------------------------
-// Reusable primitives
-// ---------------------------------------------------------------------------
-
-/** Validates a MongoDB ObjectId string (24-char hex) */
 const objectIdSchema = z
   .string()
   .regex(/^[a-f\d]{24}$/i, 'Invalid ObjectId format');
 
-// ---------------------------------------------------------------------------
-// Schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for creating a new category.
- */
 const createCategorySchema = z.object({
   name: z
     .string({ required_error: 'Category name is required' })
@@ -51,10 +34,6 @@ const createCategorySchema = z.object({
   sortOrder: z.number().int().min(0).optional().default(0),
 });
 
-/**
- * Schema for updating an existing category.
- * All fields are optional.
- */
 const updateCategorySchema = z.object({
   name: z
     .string()
@@ -82,16 +61,10 @@ const updateCategorySchema = z.object({
   sortOrder: z.number().int().min(0).optional(),
 });
 
-/**
- * Schema for validating a category ID route param.
- */
 const categoryIdSchema = z.object({
   id: objectIdSchema,
 });
 
-// ---------------------------------------------------------------------------
-// Export
-// ---------------------------------------------------------------------------
 module.exports = {
   createCategorySchema,
   updateCategorySchema,

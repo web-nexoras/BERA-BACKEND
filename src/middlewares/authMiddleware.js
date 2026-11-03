@@ -15,7 +15,7 @@ function extractToken(req) {
   return null;
 }
 
-// verify JWT and attach user to req
+// Verify the JWT and load the user.
 async function authenticate(req, res, next) {
   try {
     const token = extractToken(req);
@@ -34,7 +34,7 @@ async function authenticate(req, res, next) {
       return errorResponse(res, 'Invalid authentication token.', StatusCodes.UNAUTHORIZED);
     }
 
-    // fetch fresh user — reject if deleted or blocked
+    // Reject deleted or blocked users.
     const user = await User.findById(decoded.id).select('-password -refreshTokens');
 
     if (!user) {
@@ -52,7 +52,7 @@ async function authenticate(req, res, next) {
   }
 }
 
-// like authenticate but doesn't reject missing tokens — used for public+personalised routes
+// Optional auth for public, personalized routes.
 async function optionalAuth(req, res, next) {
   try {
     const token = extractToken(req);

@@ -78,7 +78,6 @@ async function set(key, value, ttl) {
   }
 }
 
-// alias: setEx(key, ttl, value)
 async function setEx(key, ttl, value) {
   return set(key, value, ttl);
 }
@@ -104,7 +103,6 @@ async function exists(key) {
   }
 }
 
-// delete all keys matching a glob pattern, e.g. "products:*"
 async function delByPattern(pattern) {
   if (!isAvailable()) return 0;
   try {

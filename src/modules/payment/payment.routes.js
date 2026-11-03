@@ -6,7 +6,6 @@ const paymentController = require('./payment.controller');
 const { authenticate } = require('../../middlewares/authMiddleware');
 const { isAdmin } = require('../../middlewares/adminMiddleware');
 
-// Customer
 router.post('/initiate', authenticate, paymentController.initiatePayment);
 router.get('/my-transactions', authenticate, paymentController.getMyTransactions);
 
@@ -16,7 +15,6 @@ router.post('/sslcommerz/fail', paymentController.sslcommerzFail);
 router.post('/sslcommerz/cancel', paymentController.sslcommerzCancel);
 router.post('/sslcommerz/ipn', paymentController.sslcommerzIPN);
 
-// Admin
 router.get('/admin/all', authenticate, isAdmin, paymentController.getAllTransactions);
 router.post('/admin/refund', authenticate, isAdmin, paymentController.processRefund);
 

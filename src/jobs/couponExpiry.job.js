@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file couponExpiry.job.js
- */
-
 const Coupon = require('../modules/coupon/coupon.model');
 const { redisClient, isAvailable } = require('../config/redis');
 const logger = require('../utils/logger');

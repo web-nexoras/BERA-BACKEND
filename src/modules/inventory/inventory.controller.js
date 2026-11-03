@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file inventory.controller.js
- */
-
 const inventoryService = require('./inventory.service');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');
 const asyncHandler = require('../../utils/asyncHandler');

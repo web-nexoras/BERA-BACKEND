@@ -1,10 +1,5 @@
 'use strict';
 
-/**
- * @file docs/swagger.js
- * @description OpenAPI 3.0 specification for Nexora Fashions Backend API.
- */
-
 const swaggerUi = require('swagger-ui-express');
 const env = require('../config/env');
 
@@ -51,7 +46,6 @@ const swaggerSpec = {
       },
     },
     schemas: {
-      // ── Common ──────────────────────────────────────────────────────────────
       SuccessResponse: {
         type: 'object',
         properties: {
@@ -87,7 +81,6 @@ const swaggerSpec = {
           errors: { type: 'array', items: { type: 'object' } },
         },
       },
-      // ── Auth ──────────────────────────────────────────────────────────────
       RegisterRequest: {
         type: 'object',
         required: ['name', 'email', 'password'],
@@ -121,7 +114,6 @@ const swaggerSpec = {
           },
         },
       },
-      // ── User ──────────────────────────────────────────────────────────────
       User: {
         type: 'object',
         properties: {
@@ -152,7 +144,6 @@ const swaggerSpec = {
           isDefault: { type: 'boolean' },
         },
       },
-      // ── Product ──────────────────────────────────────────────────────────
       Product: {
         type: 'object',
         properties: {
@@ -188,7 +179,6 @@ const swaggerSpec = {
           isActive: { type: 'boolean' },
         },
       },
-      // ── Category ──────────────────────────────────────────────────────────
       Category: {
         type: 'object',
         properties: {
@@ -201,7 +191,6 @@ const swaggerSpec = {
           isActive: { type: 'boolean' },
         },
       },
-      // ── Brand ──────────────────────────────────────────────────────────
       Brand: {
         type: 'object',
         properties: {
@@ -212,7 +201,6 @@ const swaggerSpec = {
           isActive: { type: 'boolean' },
         },
       },
-      // ── Cart ──────────────────────────────────────────────────────────
       Cart: {
         type: 'object',
         properties: {
@@ -221,7 +209,6 @@ const swaggerSpec = {
           appliedCoupon: { type: 'object', nullable: true },
         },
       },
-      // ── Order ──────────────────────────────────────────────────────────
       Order: {
         type: 'object',
         properties: {
@@ -243,7 +230,6 @@ const swaggerSpec = {
           createdAt: { type: 'string', format: 'date-time' },
         },
       },
-      // ── Coupon ─────────────────────────────────────────────────────────
       Coupon: {
         type: 'object',
         properties: {
@@ -266,7 +252,6 @@ const swaggerSpec = {
     },
   },
   paths: {
-    // ── Health ────────────────────────────────────────────────────────────
     '/health': {
       get: {
         tags: ['Health'],
@@ -274,7 +259,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'API is running' } },
       },
     },
-    // ── Auth ─────────────────────────────────────────────────────────────
     '/auth/register': {
       post: {
         tags: ['Auth'],
@@ -353,7 +337,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Password changed' }, 401: { $ref: '#/components/responses/Unauthorized' } },
       },
     },
-    // ── Users ─────────────────────────────────────────────────────────────
     '/users/profile': {
       get: {
         tags: ['Users'], summary: 'Get my profile', security: [{ BearerAuth: [] }],
@@ -389,7 +372,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Address deleted' } },
       },
     },
-    // ── Categories ─────────────────────────────────────────────────────────
     '/categories': {
       get: { tags: ['Categories'], summary: 'Get all categories (public)', responses: { 200: { description: 'Categories list' } } },
       post: {
@@ -419,7 +401,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Category deleted' } },
       },
     },
-    // ── Brands ─────────────────────────────────────────────────────────────
     '/brands': {
       get: { tags: ['Brands'], summary: 'Get all brands (public)', responses: { 200: { description: 'Brand list' } } },
       post: {
@@ -446,7 +427,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Brand deleted' } },
       },
     },
-    // ── Products ─────────────────────────────────────────────────────────────
     '/products': {
       get: {
         tags: ['Products'],
@@ -559,7 +539,6 @@ const swaggerSpec = {
         responses: { 201: { description: 'Variants added' } },
       },
     },
-    // ── Inventory ─────────────────────────────────────────────────────────────
     '/inventory': {
       get: {
         tags: ['Inventory'], summary: 'Get paginated inventory (Admin)', security: [{ BearerAuth: [] }],
@@ -601,7 +580,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Stock adjusted' } },
       },
     },
-    // ── Cart ─────────────────────────────────────────────────────────────────
     '/cart': {
       get: { tags: ['Cart'], summary: 'Get my cart', security: [{ BearerAuth: [] }], responses: { 200: { description: 'Cart data' } } },
       delete: { tags: ['Cart'], summary: 'Clear cart', security: [{ BearerAuth: [] }], responses: { 200: { description: 'Cart cleared' } } },
@@ -640,7 +618,6 @@ const swaggerSpec = {
       },
       delete: { tags: ['Cart'], summary: 'Remove coupon from cart', security: [{ BearerAuth: [] }], responses: { 200: { description: 'Coupon removed' } } },
     },
-    // ── Wishlist ─────────────────────────────────────────────────────────────
     '/wishlist': {
       get: { tags: ['Wishlist'], summary: 'Get my wishlist', security: [{ BearerAuth: [] }], responses: { 200: { description: 'Wishlist' } } },
       delete: { tags: ['Wishlist'], summary: 'Clear wishlist', security: [{ BearerAuth: [] }], responses: { 200: { description: 'Cleared' } } },
@@ -659,7 +636,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Removed' } },
       },
     },
-    // ── Orders ─────────────────────────────────────────────────────────────
     '/orders/checkout': {
       post: {
         tags: ['Orders'], summary: 'Place an order (checkout)', security: [{ BearerAuth: [] }],
@@ -737,7 +713,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Status updated' } },
       },
     },
-    // ── Payments ─────────────────────────────────────────────────────────────
     '/payments/initiate': {
       post: {
         tags: ['Payments'], summary: 'Initiate SSLCommerz payment for an order', security: [{ BearerAuth: [] }],
@@ -751,7 +726,6 @@ const swaggerSpec = {
     '/payments/admin/all': {
       get: { tags: ['Payments'], summary: 'Get all transactions (Admin)', security: [{ BearerAuth: [] }], responses: { 200: { description: 'All transactions' } } },
     },
-    // ── Shipping ─────────────────────────────────────────────────────────────
     '/shipping/zones': {
       get: { tags: ['Shipping'], summary: 'Get all shipping zones (public)', responses: { 200: { description: 'Zones' } } },
     },
@@ -762,7 +736,6 @@ const swaggerSpec = {
         responses: { 200: { description: 'Shipping charge' } },
       },
     },
-    // ── Coupons ─────────────────────────────────────────────────────────────
     '/coupons/validate': {
       post: {
         tags: ['Coupons'], summary: 'Validate coupon and preview discount', security: [{ BearerAuth: [] }],
@@ -797,7 +770,6 @@ const swaggerSpec = {
         responses: { 201: { description: 'Coupon created' } },
       },
     },
-    // ── Admin ─────────────────────────────────────────────────────────────
     '/admin/dashboard': {
       get: { tags: ['Admin'], summary: 'Get dashboard analytics stats (Admin)', security: [{ BearerAuth: [] }], responses: { 200: { description: 'Dashboard stats' } } },
     },

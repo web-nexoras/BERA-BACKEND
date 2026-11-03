@@ -3,7 +3,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-// price, name, image, size, color are snapshotted so display stays accurate after product edits
+// Snapshot item details so cart display survives product edits.
 const cartItemSchema = new Schema(
   {
     product: {
@@ -43,7 +43,6 @@ const appliedCouponSchema = new Schema(
   { _id: false },
 );
 
-// one cart per user
 const cartSchema = new Schema(
   {
     user: {

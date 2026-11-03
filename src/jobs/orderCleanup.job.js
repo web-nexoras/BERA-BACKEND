@@ -1,10 +1,5 @@
 'use strict';
 
-/**
- * @file orderCleanup.job.js
- * @description Auto-cancel unpaid SSLCommerz orders after configurable timeout.
- */
-
 const mongoose = require('mongoose');
 const Order = require('../modules/order/order.model');
 const Payment = require('../modules/payment/payment.model');
@@ -57,7 +52,6 @@ async function runOrderCleanup() {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-          // Release stock
           for (const item of order.items) {
             await releaseStock(item.variant.toString(), item.quantity, session);
           }

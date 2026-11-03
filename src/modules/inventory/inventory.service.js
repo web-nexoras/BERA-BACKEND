@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file inventory.service.js
- */
-
 const { StatusCodes } = require('http-status-codes');
 const mongoose = require('mongoose');
 const ProductVariant = require('../variant/variant.model');
@@ -13,9 +9,6 @@ const AppError = require('../../utils/AppError');
 const logger = require('../../utils/logger');
 const { calculatePagination, getSkip } = require('../../utils/helpers');
 
-/**
- * Get paginated inventory (all variants with product info).
- */
 async function getInventory(query = {}) {
   const page = parseInt(query.page) || 1;
   const limit = Math.min(parseInt(query.limit) || 20, 100);
@@ -40,9 +33,6 @@ async function getInventory(query = {}) {
   return { variants, pagination: calculatePagination(page, limit, total) };
 }
 
-/**
- * Manually adjust stock for a variant.
- */
 async function adjustStock(variantId, quantity, type, reference, adminId, notes) {
   const variant = await ProductVariant.findById(variantId);
   if (!variant) throw new AppError('Variant not found', StatusCodes.NOT_FOUND);
@@ -71,9 +61,6 @@ async function adjustStock(variantId, quantity, type, reference, adminId, notes)
   return variant;
 }
 
-/**
- * Get stock history for a variant.
- */
 async function getStockHistory(variantId, query = {}) {
   const page = parseInt(query.page) || 1;
   const limit = Math.min(parseInt(query.limit) || 20, 100);
@@ -92,9 +79,6 @@ async function getStockHistory(variantId, query = {}) {
   return { logs, pagination: calculatePagination(page, limit, total) };
 }
 
-/**
- * Get all low-stock products (stock <= lowStockThreshold, stock > 0).
- */
 async function getLowStockProducts() {
   return ProductVariant.find({
     $expr: { $and: [{ $lte: ['$stock', '$lowStockThreshold'] }, { $gt: ['$stock', 0] }] },
@@ -104,9 +88,6 @@ async function getLowStockProducts() {
     .lean();
 }
 
-/**
- * Get all out-of-stock variants.
- */
 async function getOutOfStockProducts() {
   return ProductVariant.find({ stock: 0, isActive: true })
     .populate('product', 'name sku images')

@@ -84,7 +84,7 @@ productVariantSchema.virtual("discountPercentage").get(function () {
   );
 });
 
-// throws if decrement would cause negative stock
+// Prevent negative stock.
 productVariantSchema.methods.adjustStock = async function (quantity, type) {
   if (type === "decrement") {
     if (this.stock < quantity) {

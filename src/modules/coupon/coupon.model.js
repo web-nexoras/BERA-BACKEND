@@ -50,7 +50,7 @@ const couponSchema = new Schema(
 
 couponSchema.index({ isActive: 1, expiresAt: 1 });
 
-// basic validity check — per-user eligibility is handled in service
+// Per-user eligibility is checked by the service.
 couponSchema.methods.isValid = function isValid() {
   if (!this.isActive) return false;
   if (new Date() > this.expiresAt) return false;

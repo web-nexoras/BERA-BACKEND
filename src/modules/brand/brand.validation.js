@@ -1,27 +1,11 @@
 'use strict';
 
-/**
- * @file brand.validation.js
- * @description Zod validation schemas for brand endpoints.
- */
-
 const { z } = require('zod');
-
-// ---------------------------------------------------------------------------
-// Reusable primitives
-// ---------------------------------------------------------------------------
 
 const objectIdSchema = z
   .string()
   .regex(/^[a-f\d]{24}$/i, 'Invalid ObjectId format');
 
-// ---------------------------------------------------------------------------
-// Schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for creating a new brand.
- */
 const createBrandSchema = z.object({
   name: z
     .string({ required_error: 'Brand name is required' })
@@ -53,10 +37,6 @@ const createBrandSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
-/**
- * Schema for updating an existing brand.
- * All fields optional.
- */
 const updateBrandSchema = z.object({
   name: z
     .string()
@@ -86,16 +66,10 @@ const updateBrandSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-/**
- * Schema for validating a brand ID route param.
- */
 const brandIdSchema = z.object({
   id: objectIdSchema,
 });
 
-// ---------------------------------------------------------------------------
-// Export
-// ---------------------------------------------------------------------------
 module.exports = {
   createBrandSchema,
   updateBrandSchema,

@@ -36,7 +36,7 @@ const getShippingCharge = async (district) => {
   const zone = await ShippingZone.findOne({ isActive: true, districts: { $regex: new RegExp(`^${district}$`, 'i') } }).lean();
   if (zone) return { zone, charge: zone.charge, estimatedDays: zone.estimatedDays };
 
-  // fallback to Outside Dhaka zone
+  // Use Outside Dhaka when no zone matches.
   const fallbackZone = await ShippingZone.findOne({ isActive: true, name: /outside dhaka/i }).lean();
   return {
     zone: fallbackZone || null,
@@ -62,7 +62,7 @@ const updateZone = async (id, data) => {
   return zone;
 };
 
-// soft-delete by deactivating
+// Deactivate instead of deleting.
 const deleteZone = async (id) => {
   const zone = await ShippingZone.findByIdAndUpdate(id, { isActive: false }, { new: true });
   if (!zone) throw new AppError('Shipping zone not found.', StatusCodes.NOT_FOUND);
@@ -70,7 +70,7 @@ const deleteZone = async (id) => {
   return zone;
 };
 
-// called on server startup — seeds default zones if none exist
+// Seed defaults on startup.
 const seedDefaultZones = async () => {
   try {
     const count = await ShippingZone.countDocuments();

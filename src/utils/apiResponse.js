@@ -2,7 +2,7 @@
 
 const { StatusCodes } = require('http-status-codes');
 
-// all responses: { success, message, data?, errors?, pagination? }
+// Standard API response shape.
 
 function successResponse(res, message, data = null, statusCode = StatusCodes.OK) {
   return res.status(statusCode).json({ success: true, message, data });

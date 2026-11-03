@@ -21,7 +21,7 @@ async function getShippingCharge(district = '') {
   return isInsideDhaka ? env.SHIPPING_CHARGE_INSIDE_DHAKA : env.SHIPPING_CHARGE_OUTSIDE_DHAKA;
 }
 
-// full checkout with MongoDB transaction for atomic stock reservation
+// Reserve stock and create the order atomically.
 async function checkout(userId, data) {
   const { shippingAddress, paymentMethod, couponCode, notes } = data;
 
@@ -94,7 +94,7 @@ async function checkout(userId, data) {
     if (couponId) await markCouponUsed(couponId, userId);
     await Cart.findOneAndUpdate({ user: userId }, { items: [], appliedCoupon: null });
 
-    // send confirmation email — non-blocking
+    // Email failure must not block checkout.
     try {
       const User = require('../auth/auth.model');
       const user = await User.findById(userId);
@@ -222,7 +222,7 @@ async function generateInvoice(orderId) {
   const order = await Order.findById(orderId).populate('user', 'name email phone').lean();
   if (!order) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
 
-  // lazy-require to avoid circular dep
+  // Lazy-load to avoid a circular dependency.
   const Settings = require('../admin/settings.model');
   const settings = await Settings.getSettings();
 

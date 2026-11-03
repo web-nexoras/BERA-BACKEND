@@ -1,6 +1,6 @@
 'use strict';
 
-// wraps async route handlers and forwards rejections to Express error middleware
+// Forward async errors to Express.
 function asyncHandler(fn) {
   return function asyncHandlerWrapper(req, res, next) {
     Promise.resolve(fn(req, res, next)).catch(next);

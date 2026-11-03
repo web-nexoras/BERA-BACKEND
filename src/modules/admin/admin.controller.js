@@ -7,7 +7,6 @@ const { successResponse, paginatedResponse } = require('../../utils/apiResponse'
 const AppError = require('../../utils/AppError');
 const { StatusCodes } = require('http-status-codes');
 
-// Dashboard
 const getDashboardStats = asyncHandler(async (req, res) =>
   successResponse(res, 'Dashboard stats', await adminService.getDashboardStats()));
 
@@ -20,14 +19,12 @@ const getRecentOrders = asyncHandler(async (req, res) =>
 const getBestSellers = asyncHandler(async (req, res) =>
   successResponse(res, 'Best selling products', await adminService.getBestSellingProducts(parseInt(req.query.limit) || 10)));
 
-// Reports
 const getSalesReport = asyncHandler(async (req, res) =>
   successResponse(res, 'Sales report', await adminService.getSalesReport(req.query.startDate, req.query.endDate)));
 
 const getInventoryReport = asyncHandler(async (req, res) =>
   successResponse(res, 'Inventory report', await adminService.getInventoryReport()));
 
-// Customers
 const getCustomers = asyncHandler(async (req, res) => {
   const { customers, pagination } = await adminService.getCustomers(req.query);
   return paginatedResponse(res, 'Customers retrieved', customers, pagination);
@@ -42,7 +39,6 @@ const blockCustomer = asyncHandler(async (req, res) =>
 const unblockCustomer = asyncHandler(async (req, res) =>
   successResponse(res, 'Customer unblocked', await adminService.unblockCustomer(req.params.id)));
 
-// Settings
 const getSettings = asyncHandler(async (req, res) =>
   successResponse(res, 'Settings retrieved', await settingsService.getSettings()));
 

@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file user.controller.js
- */
-
 const userService = require('./user.service');
 const { successResponse } = require('../../utils/apiResponse');
 const asyncHandler = require('../../utils/asyncHandler');

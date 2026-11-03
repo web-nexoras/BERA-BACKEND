@@ -8,7 +8,7 @@ const env = require('../../config/env');
 const logger = require('../../utils/logger');
 const AppError = require('../../utils/AppError');
 
-// lazy-require models to avoid circular deps at startup
+// Lazy-load models to avoid circular dependencies.
 const getOrder = () => require('../order/order.model');
 const getPayment = () => require('./payment.model');
 
@@ -28,7 +28,7 @@ const generateTranId = () => {
   return `NF-${Date.now()}-${rand}`;
 };
 
-// verify IPN hash to confirm notification authenticity
+// Verify IPN signature.
 const verifyIPNHash = (ipnData) => {
   try {
     const { verify_sign, verify_key } = ipnData;
@@ -43,7 +43,7 @@ const verifyIPNHash = (ipnData) => {
   }
 };
 
-// initiate SSLCommerz session and return gateway URL
+// Create the payment session and return its gateway URL.
 const initSSLCommerzPayment = async (order, user) => {
   const Order = getOrder();
   const Payment = getPayment();
@@ -111,7 +111,7 @@ const initSSLCommerzPayment = async (order, user) => {
   return { gatewayUrl: data.GatewayPageURL, tranId };
 };
 
-// verify IPN/success callback, validate with SSLCommerz API, mark order paid
+// Validate SSLCommerz callbacks before marking paid.
 const verifySSLCommerzPayment = async (sslData) => {
   const Order = getOrder();
   const Payment = getPayment();
@@ -125,7 +125,7 @@ const verifySSLCommerzPayment = async (sslData) => {
   const order = await Order.findById(payment.order);
   if (!order) throw new AppError('Order not found.', StatusCodes.NOT_FOUND);
 
-  // idempotent — skip if already processed
+  // Skip callbacks already processed.
   if (payment.status === 'completed') {
     logger.info('Payment already verified — skipping duplicate IPN', { tran_id });
     return { order, payment };
@@ -139,7 +139,7 @@ const verifySSLCommerzPayment = async (sslData) => {
     return { order, payment };
   }
 
-  // confirm with SSLCommerz validation API
+  // Confirm payment with SSLCommerz.
   let validationResp;
   try {
     validationResp = await axios.get(`${getSSLBase()}/validator/api/validationserverAPI.php`, {
@@ -156,7 +156,7 @@ const verifySSLCommerzPayment = async (sslData) => {
     return { order, payment };
   }
 
-  // anti-fraud: amount must match
+  // Reject callbacks with a mismatched amount.
   const gatewayAmount = parseFloat(validationData.amount || 0);
   const orderAmount = parseFloat(order.pricing.total || 0);
   if (Math.abs(gatewayAmount - orderAmount) > 1) {
@@ -205,7 +205,7 @@ const handleSSLCommerzCancel = async (sslData) => {
   return { order, payment };
 };
 
-// COD: payment record is pending until collected on delivery
+// COD stays pending until delivery.
 const confirmCODOrder = async (orderId) => {
   const Order = getOrder();
   const Payment = getPayment();
@@ -291,7 +291,7 @@ const processRefund = async (orderId, amount, adminId) => {
   return payment;
 };
 
-// internal helper — marks payment failed and updates order
+// Mark payment failed and update the order.
 const _markPaymentFailed = async (payment, order, sslData, reason) => {
   if (payment) {
     payment.status = 'failed';

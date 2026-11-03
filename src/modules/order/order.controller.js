@@ -5,7 +5,6 @@ const orderService = require('./order.service');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');
 const { StatusCodes } = require('http-status-codes');
 
-// Customer controllers
 const checkout = asyncHandler(async (req, res) => {
   const result = await orderService.checkout(req.user.id, req.body);
   return successResponse(res, 'Order placed successfully', result, StatusCodes.CREATED);
@@ -26,7 +25,6 @@ const cancelMyOrder = asyncHandler(async (req, res) => {
   return successResponse(res, 'Order cancelled successfully', order);
 });
 
-// Admin controllers
 const getAllOrders = asyncHandler(async (req, res) => {
   const { orders, pagination } = await orderService.getAdminOrders(req.query);
   return paginatedResponse(res, 'Orders retrieved successfully', orders, pagination);

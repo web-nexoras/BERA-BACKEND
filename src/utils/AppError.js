@@ -1,6 +1,6 @@
 'use strict';
 
-// operational errors are safe to expose to the client
+// Operational errors are safe to expose.
 class AppError extends Error {
   constructor(message, statusCode, errors = null) {
     super(message);

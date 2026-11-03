@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file wishlist.service.js
- */
-
 const { StatusCodes } = require('http-status-codes');
 const Wishlist = require('./wishlist.model');
 const Product = require('../product/product.model');

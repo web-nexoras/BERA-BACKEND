@@ -1,15 +1,6 @@
 'use strict';
 
-/**
- * @file auth.validation.js
- * @description Zod validation schemas for all authentication endpoints.
- */
-
 const { z } = require('zod');
-
-// ---------------------------------------------------------------------------
-// Reusable field validators
-// ---------------------------------------------------------------------------
 
 const emailField = z
   .string({ required_error: 'Email is required' })
@@ -37,13 +28,6 @@ const phoneField = z
   )
   .optional();
 
-// ---------------------------------------------------------------------------
-// Register
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for POST /auth/register
- */
 const registerSchema = z.object({
   name: z
     .string({ required_error: 'Name is required' })
@@ -55,45 +39,21 @@ const registerSchema = z.object({
   phone: phoneField,
 });
 
-// ---------------------------------------------------------------------------
-// Login
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for POST /auth/login
- */
 const loginSchema = z.object({
   email: emailField,
   password: z.string({ required_error: 'Password is required' }).min(1, 'Password is required'),
 });
 
-// ---------------------------------------------------------------------------
-// Forgot password
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for POST /auth/forgot-password
- */
 const forgotPasswordSchema = z.object({
   email: emailField,
 });
 
-// ---------------------------------------------------------------------------
-// Reset password
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for params on POST /auth/reset-password/:token
- */
 const resetPasswordParamsSchema = z.object({
   token: z
     .string({ required_error: 'Reset token is required' })
     .min(1, 'Reset token is required'),
 });
 
-/**
- * Schema for body on POST /auth/reset-password/:token
- */
 const resetPasswordSchema = z
   .object({
     password: passwordField,
@@ -104,26 +64,13 @@ const resetPasswordSchema = z
     path: ['confirmPassword'],
   });
 
-// ---------------------------------------------------------------------------
-// Verify email
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for params on GET /auth/verify-email/:token
- */
 const verifyEmailSchema = z.object({
   token: z
     .string({ required_error: 'Verification token is required' })
     .min(1, 'Verification token is required'),
 });
 
-// ---------------------------------------------------------------------------
-// Change password (authenticated)
-// ---------------------------------------------------------------------------
 
-/**
- * Schema for PUT /auth/change-password
- */
 const changePasswordSchema = z
   .object({
     currentPassword: z
@@ -141,22 +88,12 @@ const changePasswordSchema = z
     path: ['newPassword'],
   });
 
-// ---------------------------------------------------------------------------
-// Refresh token
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for POST /auth/refresh-token
- */
 const refreshTokenSchema = z.object({
   refreshToken: z
     .string({ required_error: 'Refresh token is required' })
     .min(1, 'Refresh token is required'),
 });
 
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
 module.exports = {
   registerSchema,
   loginSchema,

@@ -2,7 +2,7 @@
 
 const logger = require('../utils/logger');
 
-// lazy-load redis config to avoid circular deps at startup
+// Lazy-load Redis to avoid a startup cycle.
 const redisConfig = (() => { try { return require('../config/redis'); } catch { return null; } })();
 const getClient = () => redisConfig?.redisClient || null;
 
@@ -40,7 +40,7 @@ const cacheDel = async (key) => {
   }
 };
 
-// uses SCAN to avoid blocking Redis on large keyspaces
+// Use SCAN to avoid blocking Redis.
 const cacheDelPattern = async (pattern) => {
   const client = getClient();
   if (!client) return 0;
@@ -68,7 +68,7 @@ const cacheDelPattern = async (pattern) => {
   }
 };
 
-// cache-aside: return cached data or fetch fresh, store, and return
+// Cache aside: read, fetch on miss, then store.
 const withCache = async (key, ttl, fetchFn) => {
   try {
     const cached = await cacheGet(key);

@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file category.controller.js
- */
-
 const { StatusCodes } = require('http-status-codes');
 const categoryService = require('./category.service');
 const { successResponse } = require('../../utils/apiResponse');

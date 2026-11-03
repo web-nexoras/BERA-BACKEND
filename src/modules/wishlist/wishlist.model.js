@@ -11,7 +11,6 @@ const wishlistItemSchema = new Schema(
   { _id: true }
 );
 
-// one wishlist per user
 const wishlistSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: 'User', required: [true, 'User reference is required'], unique: true },

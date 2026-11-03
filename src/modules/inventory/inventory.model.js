@@ -2,7 +2,6 @@
 
 const mongoose = require("mongoose");
 
-// all allowed stock movement types
 const INVENTORY_TYPES = [
   "purchase",
   "sale",

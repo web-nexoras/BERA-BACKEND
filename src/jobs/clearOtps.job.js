@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file clearOtps.job.js
- */
-
 const User = require('../modules/auth/auth.model');
 const { redisClient, isAvailable } = require('../config/redis');
 const logger = require('../utils/logger');

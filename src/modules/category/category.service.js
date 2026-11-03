@@ -92,7 +92,7 @@ async function deleteCategory(id) {
     throw new AppError(`Cannot delete: this category has ${subcategoryCount} subcategory(ies). Reassign or delete them first.`, StatusCodes.BAD_REQUEST);
   }
 
-  // lazy-require to avoid circular dep
+  // Lazy-load to avoid a circular dependency.
   const Product = require('../product/product.model');
   const productCount = await Product.countDocuments({ category: id, isDeleted: false });
   if (productCount > 0) {

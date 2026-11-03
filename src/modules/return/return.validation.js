@@ -1,36 +1,17 @@
 'use strict';
 
-/**
- * @file return.validation.js
- * @description Zod validation schemas for return / refund endpoints.
- */
-
 const { z } = require('zod');
 
-// ---------------------------------------------------------------------------
-// Reusable helpers
-// ---------------------------------------------------------------------------
-
-/** Validates a MongoDB ObjectId string */
 const objectId = z
   .string({ required_error: 'ID is required' })
   .length(24, 'Must be a valid 24-character ObjectId')
   .regex(/^[a-f\d]{24}$/i, 'Must be a valid ObjectId');
 
-// ---------------------------------------------------------------------------
-// Schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for a customer creating a return request.
- * POST /api/v1/returns
- */
 const createReturnSchema = z.object({
   orderId: objectId,
   items: z
     .array(
       z.object({
-        /** Zero-based index of the item inside order.items */
         orderItemIndex: z
           .number({ required_error: 'Order item index is required', invalid_type_error: 'Index must be a number' })
           .int('Index must be an integer')
@@ -49,10 +30,6 @@ const createReturnSchema = z.object({
     .min(1, 'At least one item must be specified for a return'),
 });
 
-/**
- * Schema for admin updating a return request status.
- * PUT /api/v1/returns/:returnId/status
- */
 const updateReturnStatusSchema = z.object({
   status: z.enum(['approved', 'rejected', 'completed'], {
     required_error: 'Status is required',
@@ -66,16 +43,9 @@ const updateReturnStatusSchema = z.object({
   refundMethod: z.string().trim().max(100).optional(),
 });
 
-/**
- * Schema for route params that include a returnId.
- */
 const returnIdParamSchema = z.object({
   returnId: objectId,
 });
-
-// ---------------------------------------------------------------------------
-// Export
-// ---------------------------------------------------------------------------
 
 module.exports = {
   createReturnSchema,

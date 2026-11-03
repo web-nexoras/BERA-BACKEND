@@ -50,7 +50,6 @@ async function getProducts(query = {}) {
     Product.countDocuments(filter),
   ]);
 
-  // attach variant summary to each product
   const productIds = products.map((p) => p._id);
   const variantsSummary = await ProductVariant.find({ product: { $in: productIds }, isActive: true })
     .select('product size color price regularPrice stock')
@@ -151,7 +150,6 @@ async function updateProduct(id, data) {
   return product;
 }
 
-// soft-delete
 async function deleteProduct(id) {
   const product = await Product.findOneAndUpdate({ _id: id, isDeleted: false }, { isDeleted: true, status: 'inactive' }, { new: true });
   if (!product) throw new AppError('Product not found', StatusCodes.NOT_FOUND);

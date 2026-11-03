@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const { generateOrderNumber } = require("../../utils/helpers");
 const { Schema } = mongoose;
 
-// price/name/image snapshots so the order record is self-contained
+// Snapshot details so the order remains self-contained.
 const orderItemSchema = new Schema(
   {
     product: { type: Schema.Types.ObjectId, ref: "Product" },

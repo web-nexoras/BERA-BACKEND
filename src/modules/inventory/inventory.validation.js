@@ -1,15 +1,6 @@
 'use strict';
 
-/**
- * @file inventory.validation.js
- * @description Zod validation schemas for inventory management endpoints.
- */
-
 const { z } = require('zod');
-
-// ---------------------------------------------------------------------------
-// Reusable primitives
-// ---------------------------------------------------------------------------
 
 const objectIdSchema = z
   .string()
@@ -17,13 +8,6 @@ const objectIdSchema = z
 
 const INVENTORY_TYPES = ['purchase', 'sale', 'adjustment', 'return', 'damaged', 'initial'];
 
-// ---------------------------------------------------------------------------
-// Schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for manually adjusting stock for a variant.
- */
 const adjustStockSchema = z.object({
   variantId: objectIdSchema,
 
@@ -53,14 +37,10 @@ const adjustStockSchema = z.object({
     .default(''),
 });
 
-/**
- * Schema for paginated inventory query parameters.
- */
 const inventoryQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 
-  /** Filter: 'low_stock' | 'out_of_stock' | 'in_stock' */
   stockStatus: z.enum(['low_stock', 'out_of_stock', 'in_stock']).optional(),
 
   product: objectIdSchema.optional(),
@@ -73,9 +53,6 @@ const inventoryQuerySchema = z.object({
     .default('stock_asc'),
 });
 
-/**
- * Schema for stock history query parameters.
- */
 const stockHistoryQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -92,16 +69,10 @@ const stockHistoryQuerySchema = z.object({
     .optional(),
 });
 
-/**
- * Schema for validating the variantId route param.
- */
 const variantIdParamSchema = z.object({
   variantId: objectIdSchema,
 });
 
-// ---------------------------------------------------------------------------
-// Export
-// ---------------------------------------------------------------------------
 module.exports = {
   adjustStockSchema,
   inventoryQuerySchema,

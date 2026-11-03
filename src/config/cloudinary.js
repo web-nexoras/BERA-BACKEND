@@ -13,7 +13,7 @@ cloudinary.config({
   secure: true,
 });
 
-// upload image buffer (from multer memoryStorage) to Cloudinary
+// Upload in-memory image to Cloudinary.
 async function uploadImage(buffer, folder, publicId) {
   try {
     const result = await new Promise((resolve, reject) => {

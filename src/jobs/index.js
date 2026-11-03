@@ -10,7 +10,7 @@ const { runInventoryAlert } = require('./inventoryAlert.job');
 const { runDailyReport } = require('./dailyReport.job');
 const { runClearOtps } = require('./clearOtps.job');
 
-// all jobs use Redis distributed locks to prevent duplicate execution across instances
+// Redis locks prevent duplicate cron runs.
 function initJobs() {
   const TZ = env.CRON_TIMEZONE;
   logger.info('Initializing cron jobs...', { timezone: TZ });

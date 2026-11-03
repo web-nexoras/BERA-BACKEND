@@ -3,7 +3,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-// snapshot of the original order item so return is self-contained
+// Snapshot the order item for the return record.
 const returnItemSchema = new Schema(
   {
     orderItem: { type: Schema.Types.Mixed, required: true },

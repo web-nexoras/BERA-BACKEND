@@ -66,7 +66,7 @@ async function deleteBrand(id) {
   const brand = await Brand.findById(id);
   if (!brand) throw new AppError('Brand not found', StatusCodes.NOT_FOUND);
 
-  // lazy-require to avoid circular dep
+  // Lazy-load to avoid a circular dependency.
   const Product = require('../product/product.model');
   const productCount = await Product.countDocuments({ brand: id, isDeleted: false });
   if (productCount > 0) {

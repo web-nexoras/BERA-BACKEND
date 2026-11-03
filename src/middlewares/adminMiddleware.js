@@ -3,14 +3,14 @@
 const { StatusCodes } = require('http-status-codes');
 const { errorResponse } = require('../utils/apiResponse');
 
-// use after authenticate middleware
+// Run after authentication.
 function isAdmin(req, res, next) {
   if (!req.user) return errorResponse(res, 'Authentication required.', StatusCodes.UNAUTHORIZED);
   if (req.user.role !== 'admin') return errorResponse(res, 'Access denied. Admin privileges required.', StatusCodes.FORBIDDEN);
   return next();
 }
 
-// no permissions array = super-admin with full access
+// No permissions means full admin access.
 function hasPermission(permission) {
   return function permissionMiddleware(req, res, next) {
     if (!req.user) return errorResponse(res, 'Authentication required.', StatusCodes.UNAUTHORIZED);

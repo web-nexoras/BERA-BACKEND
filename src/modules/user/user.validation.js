@@ -1,20 +1,8 @@
 'use strict';
 
-/**
- * @file user.validation.js
- * @description Zod schemas for user profile and address management endpoints.
- */
-
 const { z } = require('zod');
 const { isValidObjectId } = require('../../utils/helpers');
 
-// ---------------------------------------------------------------------------
-// Shared validators
-// ---------------------------------------------------------------------------
-
-/**
- * Validates a MongoDB ObjectId string.
- */
 const objectIdSchema = z
   .string()
   .refine(isValidObjectId, { message: 'Invalid ID format' });
@@ -26,14 +14,6 @@ const phoneField = z
     'Please provide a valid Bangladeshi phone number',
   );
 
-// ---------------------------------------------------------------------------
-// Profile schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for PUT /users/profile
- * All fields are optional – PATCH-style update.
- */
 const updateProfileSchema = z
   .object({
     name: z
@@ -50,13 +30,6 @@ const updateProfileSchema = z
     { message: 'At least one field must be provided for update' },
   );
 
-// ---------------------------------------------------------------------------
-// Address schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Schema for POST /users/addresses
- */
 const addAddressSchema = z.object({
   label: z.enum(['home', 'work', 'other']).default('home'),
   recipientName: z
@@ -97,10 +70,6 @@ const addAddressSchema = z.object({
   isDefault: z.boolean().default(false),
 });
 
-/**
- * Schema for PUT /users/addresses/:addressId
- * All fields are optional.
- */
 const updateAddressSchema = z
   .object({
     label: z.enum(['home', 'work', 'other']).optional(),
@@ -152,16 +121,10 @@ const updateAddressSchema = z
     { message: 'At least one field must be provided for update' },
   );
 
-/**
- * Schema for address ID URL params.
- */
 const addressIdParamSchema = z.object({
   addressId: objectIdSchema,
 });
 
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
 module.exports = {
   objectIdSchema,
   updateProfileSchema,

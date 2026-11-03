@@ -28,7 +28,7 @@ const settingsSchema = new mongoose.Schema(
   },
 );
 
-// singleton — create with defaults if not found
+// Keep a single settings document.
 settingsSchema.statics.getSettings = async function () {
   let settings = await this.findOne();
   if (!settings) settings = await this.create({});

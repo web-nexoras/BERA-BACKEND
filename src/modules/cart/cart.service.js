@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file cart.service.js
- */
-
 const { StatusCodes } = require('http-status-codes');
 const Cart = require('./cart.model');
 const Product = require('../product/product.model');
@@ -130,7 +126,6 @@ async function removeCoupon(userId) {
 async function getCartSummary(userId) {
   const cart = await getOrCreateCart(userId);
   const totals = cart.getTotals();
-  // Estimate shipping
   const shippingEstimate = totals.itemCount > 0 ? env.SHIPPING_CHARGE_INSIDE_DHAKA : 0;
   return { ...totals, shippingEstimate };
 }

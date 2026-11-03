@@ -9,7 +9,7 @@ if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
-// logger loads before env validation, so fall back safely
+// Logger loads before env validation.
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, http: 3, debug: 4 };
@@ -42,7 +42,7 @@ const logger = createLogger({
     new transports.File({
       filename: path.join(LOG_DIR, 'combined.log'),
       format: jsonFileFormat,
-      maxsize: 10 * 1024 * 1024, // 10 MB
+      maxsize: 10 * 1024 * 1024,
       maxFiles: 5,
     }),
     new transports.File({
@@ -56,7 +56,7 @@ const logger = createLogger({
   exitOnError: false,
 });
 
-// stream interface for morgan HTTP request logging
+// Morgan log stream.
 logger.stream = {
   write(message) {
     logger.http(message.trim());

@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file dailyReport.job.js
- */
-
 const { sendDailyReportEmail } = require('../services/email.service');
 const { redisClient, isAvailable } = require('../config/redis');
 const logger = require('../utils/logger');

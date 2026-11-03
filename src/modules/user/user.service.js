@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file user.service.js
- */
-
 const { StatusCodes } = require('http-status-codes');
 const User = require('../auth/auth.model');
 const Address = require('./user.model');

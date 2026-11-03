@@ -39,7 +39,6 @@ categorySchema.index({ slug: 1 });
 categorySchema.index({ parent: 1 });
 categorySchema.index({ isActive: 1, sortOrder: 1 });
 
-// virtual to populate direct children
 categorySchema.virtual("subcategories", {
   ref: "Category",
   localField: "_id",
@@ -47,7 +46,7 @@ categorySchema.virtual("subcategories", {
   options: { sort: { sortOrder: 1, name: 1 } },
 });
 
-// auto-generate unique slug from name
+// Generate a unique slug from the name.
 categorySchema.pre("save", async function (next) {
   if (!this.isModified("name") && this.slug) return next();
 

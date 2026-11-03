@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, default: null },
     phone: { type: String, default: null },
 
-    // tokens (hidden from responses)
+    // Exclude tokens from responses.
     emailVerificationToken: { type: String, select: false },
     emailVerificationTokenExpires: { type: Date, select: false },
     passwordResetToken: { type: String, select: false },
@@ -63,7 +63,6 @@ userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 
-// hash password before save
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(
@@ -73,12 +72,11 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// compare plain password with hash
 userSchema.methods.comparePassword = function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-// generate password reset token (returns raw token, stores hash)
+// Return the raw token once; store only its hash.
 userSchema.methods.createPasswordResetToken = function () {
   const raw = crypto.randomBytes(32).toString("hex");
   this.passwordResetToken = crypto
@@ -92,7 +90,7 @@ userSchema.methods.createPasswordResetToken = function () {
   return raw;
 };
 
-// generate email verification token
+// Return the raw token once; store only its hash.
 userSchema.methods.createEmailVerificationToken = function () {
   const raw = crypto.randomBytes(32).toString("hex");
   this.emailVerificationToken = crypto

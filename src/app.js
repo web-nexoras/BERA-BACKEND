@@ -22,7 +22,7 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow Postman / mobile
+      if (!origin) return callback(null, true); // allow requests without Origin
       if (env.CORS_ORIGINS_LIST.includes(origin)) return callback(null, true);
       callback(new Error(`CORS: Origin '${origin}' not allowed`));
     },
@@ -49,7 +49,7 @@ const generalLimiter = rateLimit({
   message: { success: false, message: 'Too many requests from this IP, please try again later.' },
 });
 
-// stricter limit for auth routes
+// Stricter auth rate limit.
 const authLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   max: env.AUTH_RATE_LIMIT_MAX,

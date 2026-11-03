@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * @file return.service.js
- */
-
 const { StatusCodes } = require('http-status-codes');
 const Return = require('./return.model');
 const Order = require('../order/order.model');

@@ -48,7 +48,7 @@ function handleJWTExpiredError() {
   return new AppError('Your token has expired. Please log in again.', StatusCodes.UNAUTHORIZED);
 }
 
-// must be registered after all routes (4-arg signature required by Express)
+// Register after routes; Express requires four arguments.
 function errorMiddleware(err, req, res, next) { // eslint-disable-line no-unused-vars
   logger.error('Unhandled error', {
     message: err.message,
@@ -79,7 +79,7 @@ function errorMiddleware(err, req, res, next) { // eslint-disable-line no-unused
     return errorResponse(res, error.message, error.statusCode, error.errors);
   }
 
-  // hide details in production
+  // Hide error details in production.
   const statusCode = error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
   const message =
     process.env.NODE_ENV === 'production'
