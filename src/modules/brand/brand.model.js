@@ -33,8 +33,8 @@ const brandSchema = new mongoose.Schema(
 brandSchema.index({ slug: 1 });
 brandSchema.index({ isActive: 1 });
 
-brandSchema.pre("save", async function (next) {
-  if (!this.isModified("name") && this.slug) return next();
+brandSchema.pre("save", async function () {
+  if (!this.isModified("name") && this.slug) return;
 
   const baseSlug = slugify(this.name, {
     lower: true,
@@ -45,7 +45,6 @@ brandSchema.pre("save", async function (next) {
     .model("Brand")
     .findOne({ slug: baseSlug, _id: { $ne: this._id } });
   this.slug = existing ? `${baseSlug}-${Date.now().toString(36)}` : baseSlug;
-  next();
 });
 
 brandSchema.statics.findActive = function () {

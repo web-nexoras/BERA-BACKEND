@@ -5,7 +5,8 @@ const { StatusCodes } = require('http-status-codes');
 const { errorResponse } = require('../utils/apiResponse');
 
 function formatZodErrors(zodError) {
-  return zodError.errors.map((e) => ({
+  const issues = zodError.issues || zodError.errors || [];
+  return issues.map((e) => ({
     field: e.path.join('.') || 'value',
     message: e.message,
     code: e.code,

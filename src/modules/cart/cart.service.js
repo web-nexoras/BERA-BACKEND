@@ -8,28 +8,35 @@ const Coupon = require('../coupon/coupon.model');
 const AppError = require('../../utils/AppError');
 const env = require('../../config/env');
 
-async function getOrCreateCart(userId) {
-  let cart = await Cart.findOne({ user: userId })
+function ownerQuery(userId, sessionId) {
+  if (userId) return { user: userId };
+  return { sessionId };
+}
+
+async function getOrCreateCart(userId, sessionId) {
+  let cart = await Cart.findOne(ownerQuery(userId, sessionId))
     .populate('items.product', 'name images isActive isDeleted')
     .populate('items.variant', 'size color price stock isActive');
-  if (!cart) cart = await Cart.create({ user: userId, items: [] });
+  if (!cart) {
+    cart = await Cart.create({ user: userId || null, sessionId: userId ? null : sessionId, items: [] });
+  }
   return cart;
 }
 
-async function getCart(userId) {
-  const cart = await getOrCreateCart(userId);
+async function getCart(userId, sessionId) {
+  const cart = await getOrCreateCart(userId, sessionId);
   return { cart, totals: cart.getTotals() };
 }
 
-async function addToCart(userId, { productId, variantId, quantity }) {
+async function addToCart(userId, sessionId, { productId, variantId, quantity }) {
   const product = await Product.findOne({ _id: productId, isDeleted: false, status: 'active' });
   if (!product) throw new AppError('Product not found or unavailable', StatusCodes.NOT_FOUND);
 
   const variant = await ProductVariant.findOne({ _id: variantId, product: productId, isActive: true });
   if (!variant) throw new AppError('Variant not found', StatusCodes.NOT_FOUND);
 
-  let cart = await Cart.findOne({ user: userId });
-  if (!cart) cart = await Cart.create({ user: userId, items: [] });
+  let cart = await Cart.findOne(ownerQuery(userId, sessionId));
+  if (!cart) cart = await Cart.create({ user: userId || null, sessionId: userId ? null : sessionId, items: [] });
 
   const existingIndex = cart.items.findIndex((i) => i.variant.toString() === variantId);
 
@@ -60,8 +67,8 @@ async function addToCart(userId, { productId, variantId, quantity }) {
   return { cart, totals: cart.getTotals() };
 }
 
-async function updateCartItem(userId, variantId, quantity) {
-  const cart = await Cart.findOne({ user: userId });
+async function updateCartItem(userId, sessionId, variantId, quantity) {
+  const cart = await Cart.findOne(ownerQuery(userId, sessionId));
   if (!cart) throw new AppError('Cart not found', StatusCodes.NOT_FOUND);
 
   const idx = cart.items.findIndex((i) => i.variant.toString() === variantId);
@@ -78,19 +85,19 @@ async function updateCartItem(userId, variantId, quantity) {
   return { cart, totals: cart.getTotals() };
 }
 
-async function removeCartItem(userId, variantId) {
-  const cart = await Cart.findOne({ user: userId });
+async function removeCartItem(userId, sessionId, variantId) {
+  const cart = await Cart.findOne(ownerQuery(userId, sessionId));
   if (!cart) throw new AppError('Cart not found', StatusCodes.NOT_FOUND);
   cart.items = cart.items.filter((i) => i.variant.toString() !== variantId);
   await cart.save();
   return { cart, totals: cart.getTotals() };
 }
 
-async function clearCart(userId) {
-  await Cart.findOneAndUpdate({ user: userId }, { items: [], appliedCoupon: null });
+async function clearCart(userId, sessionId) {
+  await Cart.findOneAndUpdate(ownerQuery(userId, sessionId), { items: [], appliedCoupon: null });
 }
 
-async function applyCoupon(userId, code) {
+async function applyCoupon(userId, sessionId, code) {
   const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
   if (!coupon) throw new AppError('Invalid or expired coupon', StatusCodes.BAD_REQUEST);
   if (coupon.expiresAt < new Date()) throw new AppError('Coupon has expired', StatusCodes.BAD_REQUEST);
@@ -98,7 +105,7 @@ async function applyCoupon(userId, code) {
     throw new AppError('Coupon usage limit reached', StatusCodes.BAD_REQUEST);
   }
 
-  const cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne(ownerQuery(userId, sessionId));
   if (!cart) throw new AppError('Cart not found', StatusCodes.NOT_FOUND);
 
   const totals = cart.getTotals();
@@ -118,16 +125,43 @@ async function applyCoupon(userId, code) {
   return { cart, totals: cart.getTotals() };
 }
 
-async function removeCoupon(userId) {
-  const cart = await Cart.findOneAndUpdate({ user: userId }, { appliedCoupon: null }, { new: true });
+async function removeCoupon(userId, sessionId) {
+  const cart = await Cart.findOneAndUpdate(ownerQuery(userId, sessionId), { appliedCoupon: null }, { new: true });
   return { cart, totals: cart.getTotals() };
 }
 
-async function getCartSummary(userId) {
-  const cart = await getOrCreateCart(userId);
+async function getCartSummary(userId, sessionId) {
+  const cart = await getOrCreateCart(userId, sessionId);
   const totals = cart.getTotals();
   const shippingEstimate = totals.itemCount > 0 ? env.SHIPPING_CHARGE_INSIDE_DHAKA : 0;
   return { ...totals, shippingEstimate };
 }
 
-module.exports = { getCart, addToCart, updateCartItem, removeCartItem, clearCart, applyCoupon, removeCoupon, getCartSummary };
+async function mergeCart(userId, sessionId) {
+  if (!userId || !sessionId) return { merged: false };
+  const guestCart = await Cart.findOne({ sessionId, user: null });
+  if (!guestCart || guestCart.items.length === 0) return { merged: false };
+
+  let userCart = await Cart.findOne({ user: userId });
+  if (!userCart) userCart = await Cart.create({ user: userId, items: [] });
+
+  for (const item of guestCart.items) {
+    const idx = userCart.items.findIndex((i) => i.variant.toString() === item.variant.toString());
+    if (idx >= 0) {
+      userCart.items[idx].quantity += item.quantity;
+    } else {
+      userCart.items.push(item);
+    }
+  }
+  if (guestCart.appliedCoupon && !userCart.appliedCoupon) {
+    userCart.appliedCoupon = guestCart.appliedCoupon;
+  }
+  await userCart.save();
+  await Cart.deleteOne({ _id: guestCart._id });
+  return { merged: true };
+}
+
+module.exports = {
+  getCart, addToCart, updateCartItem, removeCartItem, clearCart, applyCoupon, removeCoupon,
+  getCartSummary, mergeCart,
+};

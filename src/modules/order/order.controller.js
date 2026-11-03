@@ -6,7 +6,8 @@ const { successResponse, paginatedResponse } = require('../../utils/apiResponse'
 const { StatusCodes } = require('http-status-codes');
 
 const checkout = asyncHandler(async (req, res) => {
-  const result = await orderService.checkout(req.user.id, req.body);
+  const userId = req.user ? (req.user._id || req.user.id) : null;
+  const result = await orderService.checkout(userId, req.sessionId, req.body);
   return successResponse(res, 'Order placed successfully', result, StatusCodes.CREATED);
 });
 
@@ -50,4 +51,11 @@ const generateInvoice = asyncHandler(async (req, res) => {
   return successResponse(res, 'Invoice generated', invoice);
 });
 
-module.exports = { checkout, getMyOrders, getMyOrderById, cancelMyOrder, getAllOrders, getOrderById, updateOrderStatus, generateInvoice };
+
+const trackOrder = asyncHandler(async (req, res) => {
+  const { orderNumber, phone, email } = req.query;
+  const data = await orderService.trackOrder(orderNumber, phone, email);
+  return successResponse(res, 'Order tracked successfully', data);
+});
+
+module.exports = { checkout, getMyOrders, getMyOrderById, cancelMyOrder, getAllOrders, getOrderById, updateOrderStatus, generateInvoice, trackOrder };

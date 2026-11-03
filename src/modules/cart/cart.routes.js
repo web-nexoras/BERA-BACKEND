@@ -3,11 +3,11 @@
 const express = require('express');
 const router = express.Router();
 const cartController = require('./cart.controller');
-const { authenticate } = require('../../middlewares/authMiddleware');
+const { authenticate, optionalAuth, attachSession } = require('../../middlewares/authMiddleware');
 const { validateBody, validateParams } = require('../../middlewares/validateMiddleware');
 const { addToCartSchema, updateCartItemSchema, applyCouponSchema, removeCartItemSchema } = require('./cart.validation');
 
-router.use(authenticate);
+router.use(optionalAuth, attachSession);
 
 router.get('/', cartController.getCart);
 router.get('/summary', cartController.getCartSummary);
@@ -17,5 +17,8 @@ router.delete('/items/:variantId', validateParams(removeCartItemSchema), cartCon
 router.delete('/', cartController.clearCart);
 router.post('/coupon', validateBody(applyCouponSchema), cartController.applyCoupon);
 router.delete('/coupon', cartController.removeCoupon);
+
+// Merge guest cart into user cart on login.
+router.post('/merge', authenticate, attachSession, cartController.mergeCart);
 
 module.exports = router;

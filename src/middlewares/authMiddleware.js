@@ -79,4 +79,13 @@ async function optionalAuth(req, res, next) {
   }
 }
 
-module.exports = { authenticate, optionalAuth };
+const crypto = require('crypto');
+
+function attachSession(req, res, next) {
+  const sid = req.headers['x-session-id'] || req.headers['X-Session-Id'];
+  req.sessionId = sid && String(sid).trim() ? String(sid).trim() : crypto.randomUUID();
+  res.setHeader('X-Session-Id', req.sessionId);
+  return next();
+}
+
+module.exports = { authenticate, optionalAuth, attachSession };

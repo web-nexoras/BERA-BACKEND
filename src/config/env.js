@@ -105,7 +105,7 @@ const envSchema = z.object({
 const _parsed = envSchema.safeParse(process.env);
 
 if (!_parsed.success) {
-  const formatted = _parsed.error.errors
+  const formatted = (_parsed.error.issues || _parsed.error.errors)
     .map((e) => `  ${e.path.join('.')}: ${e.message}`)
     .join('\n');
 

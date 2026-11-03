@@ -47,8 +47,8 @@ categorySchema.virtual("subcategories", {
 });
 
 // Generate a unique slug from the name.
-categorySchema.pre("save", async function (next) {
-  if (!this.isModified("name") && this.slug) return next();
+categorySchema.pre("save", async function () {
+  if (!this.isModified("name") && this.slug) return;
 
   const baseSlug = slugify(this.name, {
     lower: true,
@@ -59,7 +59,6 @@ categorySchema.pre("save", async function (next) {
     .model("Category")
     .findOne({ slug: baseSlug, _id: { $ne: this._id } });
   this.slug = existing ? `${baseSlug}-${Date.now().toString(36)}` : baseSlug;
-  next();
 });
 
 categorySchema.statics.findActive = function () {

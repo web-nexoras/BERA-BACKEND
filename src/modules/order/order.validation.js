@@ -20,6 +20,7 @@ const shippingAddressSchema = z.object({
       /^(?:\+8801|8801|01)[3-9]\d{8}$/,
       'Please provide a valid Bangladeshi phone number'
     ),
+  email: z.string().email('Please provide a valid email').trim().toLowerCase().optional(),
   addressLine1: z
     .string({ required_error: 'Address line 1 is required' })
     .trim()

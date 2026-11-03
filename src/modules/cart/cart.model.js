@@ -48,13 +48,26 @@ const cartSchema = new Schema(
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "User reference is required"],
-      unique: true,
+      required: false,
+      default: null,
+    },
+    sessionId: {
+      type: String,
+      trim: true,
+      default: null,
     },
     items: [cartItemSchema],
     appliedCoupon: { type: appliedCouponSchema, default: null },
   },
   { timestamps: true, versionKey: false },
+);
+
+cartSchema.index(
+  { user: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { user: { $type: "objectId" } },
+  },
 );
 
 cartSchema.methods.getTotals = function getTotals() {

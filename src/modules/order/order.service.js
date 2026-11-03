@@ -22,10 +22,11 @@ async function getShippingCharge(district = '') {
 }
 
 // Reserve stock and create the order atomically.
-async function checkout(userId, data) {
+async function checkout(userId, sessionId, data) {
   const { shippingAddress, paymentMethod, couponCode, notes } = data;
 
-  const cart = await Cart.findOne({ user: userId })
+  const cartQuery = userId ? { user: userId } : { sessionId };
+  const cart = await Cart.findOne(cartQuery)
     .populate('items.variant', 'price regularPrice stock sku size color product')
     .populate('items.product', 'name images');
 
@@ -46,6 +47,7 @@ async function checkout(userId, data) {
 
   const orderItems = cart.items.map((item) => {
     const mainImg = item.product.images?.find((i) => i.isMain) || item.product.images?.[0];
+    const unitPrice = item.variant?.price || item.price;
     return {
       product: item.product._id,
       variant: item.variant._id,
@@ -55,8 +57,8 @@ async function checkout(userId, data) {
       color: item.variant.color || '',
       sku: item.variant.sku || '',
       quantity: item.quantity,
-      price: item.price,
-      totalPrice: item.price * item.quantity,
+      price: unitPrice,
+      totalPrice: unitPrice * item.quantity,
     };
   });
 
@@ -70,7 +72,9 @@ async function checkout(userId, data) {
 
     const [order] = await Order.create(
       [{
-        user: userId,
+        user: userId || null,
+        guestEmail: userId ? null : (shippingAddress.email || null),
+        guestPhone: userId ? null : (shippingAddress.phone || null),
         items: orderItems,
         shippingAddress,
         pricing: { subtotal, shippingCharge, discountAmount, couponCode: couponCode || null, couponId: couponId || null, total },
@@ -84,21 +88,27 @@ async function checkout(userId, data) {
     );
 
     const [payment] = await Payment.create(
-      [{ order: order._id, user: userId, method: paymentMethod, amount: total, status: 'pending' }],
+      [{ order: order._id, user: userId || null, method: paymentMethod, amount: total, status: 'pending' }],
       { session },
     );
 
     await session.commitTransaction();
     session.endSession();
 
-    if (couponId) await markCouponUsed(couponId, userId);
-    await Cart.findOneAndUpdate({ user: userId }, { items: [], appliedCoupon: null });
+    if (couponId && userId) await markCouponUsed(couponId, userId);
+    const clearQuery = userId ? { user: userId } : { sessionId };
+    await Cart.findOneAndUpdate(clearQuery, { items: [], appliedCoupon: null });
 
     // Email failure must not block checkout.
     try {
-      const User = require('../auth/auth.model');
-      const user = await User.findById(userId);
-      await emailService.sendOrderConfirmationEmail(user, order);
+      if (userId) {
+        const User = require('../auth/auth.model');
+        const user = await User.findById(userId);
+        await emailService.sendOrderConfirmationEmail(user, order);
+      } else if (shippingAddress.email) {
+        // guest: best-effort email via a generic send if available
+        try { await emailService.sendOrderConfirmationEmail({ name: shippingAddress.recipientName, email: shippingAddress.email }, order); } catch {}
+      }
     } catch (e) {
       logger.error('Failed to send order confirmation email', { error: e.message });
     }
@@ -108,8 +118,13 @@ async function checkout(userId, data) {
     let paymentUrl = null;
     if (paymentMethod === 'sslcommerz') {
       const paymentService = require('../payment/payment.service');
-      const User = require('../auth/auth.model');
-      const user = await User.findById(userId);
+      let user = null;
+      if (userId) {
+        const User = require('../auth/auth.model');
+        user = await User.findById(userId);
+      } else {
+        user = { name: shippingAddress.recipientName, email: shippingAddress.email, phone: shippingAddress.phone };
+      }
       paymentUrl = await paymentService.initSSLCommerzPayment(order, user, payment._id);
     }
 
@@ -238,4 +253,33 @@ async function generateInvoice(orderId) {
   };
 }
 
-module.exports = { checkout, getOrders, getOrderById, cancelOrder, getAdminOrders, updateOrderStatus, generateInvoice };
+async function trackOrder(orderNumber, phone, email) {
+  if (!orderNumber) throw new AppError('Order number is required', StatusCodes.BAD_REQUEST);
+  if (!phone && !email) throw new AppError('Phone or email is required for verification', StatusCodes.BAD_REQUEST);
+
+  const order = await Order.findOne({ orderNumber }).populate('user', 'email phone').lean();
+  if (!order) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
+
+  const orderPhone = order.shippingAddress?.phone || order.guestPhone;
+  const orderEmail = order.shippingAddress?.email || order.guestEmail || order.user?.email;
+
+  if (phone && orderPhone && phone.trim() !== String(orderPhone).trim()) {
+    throw new AppError('Verification failed', StatusCodes.FORBIDDEN);
+  }
+  if (email && orderEmail && email.trim().toLowerCase() !== String(orderEmail).trim().toLowerCase()) {
+    throw new AppError('Verification failed', StatusCodes.FORBIDDEN);
+  }
+
+  return {
+    orderNumber: order.orderNumber,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
+    items: order.items,
+    pricing: order.pricing,
+    shippingAddress: order.shippingAddress,
+    createdAt: order.createdAt,
+  };
+}
+
+module.exports = { checkout, getOrders, getOrderById, cancelOrder, getAdminOrders, updateOrderStatus, generateInvoice, trackOrder };

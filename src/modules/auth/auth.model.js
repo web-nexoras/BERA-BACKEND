@@ -63,13 +63,12 @@ userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(
     this.password,
     env.BCRYPT_SALT_ROUNDS || 12,
   );
-  next();
 });
 
 userSchema.methods.comparePassword = function (candidate) {

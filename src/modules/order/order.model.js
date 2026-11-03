@@ -25,6 +25,7 @@ const shippingAddressSchema = new Schema(
   {
     recipientName: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
+    email: { type: String, trim: true, lowercase: true },
     addressLine1: { type: String, required: true, trim: true },
     addressLine2: { type: String, trim: true, default: "" },
     city: { type: String, required: true, trim: true },
@@ -92,8 +93,11 @@ const orderSchema = new Schema(
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "User reference is required"],
+      required: false,
+      default: null,
     },
+    guestEmail: { type: String, trim: true, lowercase: true },
+    guestPhone: { type: String, trim: true },
     items: {
       type: [orderItemSchema],
       validate: {
@@ -138,9 +142,8 @@ orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 
-orderSchema.pre("save", function preSave(next) {
+orderSchema.pre("save", function preSave() {
   if (!this.orderNumber) this.orderNumber = generateOrderNumber();
-  next();
 });
 
 const Order = mongoose.model("Order", orderSchema);

@@ -108,8 +108,8 @@ productSchema.virtual("variants", {
   options: { sort: { size: 1, color: 1 } },
 });
 
-productSchema.pre("save", async function (next) {
-  if (!this.isModified("name") && this.slug) return next();
+productSchema.pre("save", async function () {
+  if (!this.isModified("name") && this.slug) return;
 
   const baseSlug = slugify(this.name, {
     lower: true,
@@ -120,7 +120,6 @@ productSchema.pre("save", async function (next) {
     .model("Product")
     .findOne({ slug: baseSlug, _id: { $ne: this._id } });
   this.slug = existing ? `${baseSlug}-${Date.now().toString(36)}` : baseSlug;
-  next();
 });
 
 productSchema.statics.findActive = function () {
