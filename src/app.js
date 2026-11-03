@@ -66,7 +66,7 @@ app.use('/api/v1/auth/forgot-password', authLimiter);
 if (env.SWAGGER_ENABLED) {
   const { swaggerSpec, swaggerUi, swaggerUiOptions } = require('./docs/swagger');
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
-  logger.info(`📖 Swagger UI available at ${env.APP_URL}/api-docs`);
+  logger.info(`Swagger UI available at ${env.APP_URL}/api-docs`);
 }
 
 app.use('/api/v1', apiRoutes);

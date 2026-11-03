@@ -137,11 +137,11 @@ const _parsed = envSchema.safeParse(process.env);
 
 if (!_parsed.success) {
   const formatted = _parsed.error.errors
-    .map((e) => `  ✗ ${e.path.join('.')}: ${e.message}`)
+    .map((e) => `  ${e.path.join('.')}: ${e.message}`)
     .join('\n');
 
   console.error(
-    '\n❌  Environment variable validation failed:\n' + formatted + '\n',
+    '\nEnvironment variable validation failed:\n' + formatted + '\n',
   );
   process.exit(1);
 }

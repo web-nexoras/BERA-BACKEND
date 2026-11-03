@@ -13,24 +13,24 @@ const { runClearOtps } = require('./clearOtps.job');
 // all jobs use Redis distributed locks to prevent duplicate execution across instances
 function initJobs() {
   const TZ = env.CRON_TIMEZONE;
-  logger.info('🕐 Initializing cron jobs...', { timezone: TZ });
+  logger.info('Initializing cron jobs...', { timezone: TZ });
 
   cron.schedule(env.CRON_ORDER_CLEANUP, async () => { await runOrderCleanup(); }, { timezone: TZ });
-  logger.info(`  ✓ Order Cleanup: ${env.CRON_ORDER_CLEANUP}`);
+  logger.info(`  Order Cleanup: ${env.CRON_ORDER_CLEANUP}`);
 
   cron.schedule(env.CRON_COUPON_EXPIRY, async () => { await runCouponExpiry(); }, { timezone: TZ });
-  logger.info(`  ✓ Coupon Expiry: ${env.CRON_COUPON_EXPIRY}`);
+  logger.info(`  Coupon Expiry: ${env.CRON_COUPON_EXPIRY}`);
 
   cron.schedule(env.CRON_INVENTORY_ALERT, async () => { await runInventoryAlert(); }, { timezone: TZ });
-  logger.info(`  ✓ Inventory Alert: ${env.CRON_INVENTORY_ALERT}`);
+  logger.info(`  Inventory Alert: ${env.CRON_INVENTORY_ALERT}`);
 
   cron.schedule(env.CRON_DAILY_REPORT, async () => { await runDailyReport(); }, { timezone: TZ });
-  logger.info(`  ✓ Daily Report: ${env.CRON_DAILY_REPORT}`);
+  logger.info(`  Daily Report: ${env.CRON_DAILY_REPORT}`);
 
   cron.schedule(env.CRON_CLEAR_OTPS, async () => { await runClearOtps(); }, { timezone: TZ });
-  logger.info(`  ✓ Clear OTPs: ${env.CRON_CLEAR_OTPS}`);
+  logger.info(`  Clear OTPs: ${env.CRON_CLEAR_OTPS}`);
 
-  logger.info('✅ All cron jobs initialized');
+  logger.info('All cron jobs initialized');
 }
 
 module.exports = { initJobs };

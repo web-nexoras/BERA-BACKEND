@@ -48,7 +48,6 @@ const couponSchema = new Schema(
   { timestamps: true, versionKey: false },
 );
 
-couponSchema.index({ code: 1 }, { unique: true });
 couponSchema.index({ isActive: 1, expiresAt: 1 });
 
 // basic validity check — per-user eligibility is handled in service

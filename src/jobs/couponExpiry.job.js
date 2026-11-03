@@ -31,15 +31,15 @@ async function runCouponExpiry() {
     return;
   }
 
-  logger.info('🔄 [couponExpiry] Starting...');
+  logger.info('[couponExpiry] Starting...');
   try {
     const result = await Coupon.updateMany(
       { expiresAt: { $lt: new Date() }, isActive: true },
       { isActive: false },
     );
-    logger.info(`✅ [couponExpiry] Deactivated ${result.modifiedCount} expired coupon(s)`);
+    logger.info(`[couponExpiry] Deactivated ${result.modifiedCount} expired coupon(s)`);
   } catch (err) {
-    logger.error('❌ [couponExpiry] Job failed', { error: err.message });
+    logger.error('[couponExpiry] Job failed', { error: err.message });
   } finally {
     await releaseLock();
   }

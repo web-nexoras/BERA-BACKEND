@@ -6,10 +6,10 @@ const logger = require('../utils/logger');
 
 mongoose.set('strictQuery', true);
 
-mongoose.connection.on('connected',    () => logger.info('✅  MongoDB connected'));
-mongoose.connection.on('error',    (e) => logger.error('❌  MongoDB error', { error: e.message }));
-mongoose.connection.on('disconnected', () => logger.warn('⚠️  MongoDB disconnected'));
-mongoose.connection.on('reconnected',  () => logger.info('🔄  MongoDB reconnected'));
+mongoose.connection.on('connected',    () => logger.info('MongoDB connected'));
+mongoose.connection.on('error',    (e) => logger.error('MongoDB error', { error: e.message }));
+mongoose.connection.on('disconnected', () => logger.warn('MongoDB disconnected'));
+mongoose.connection.on('reconnected',  () => logger.info('MongoDB reconnected'));
 
 async function connectDB() {
   logger.info('Connecting to MongoDB…');

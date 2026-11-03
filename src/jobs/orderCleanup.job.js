@@ -37,7 +37,7 @@ async function runOrderCleanup() {
   }
 
   const startTime = Date.now();
-  logger.info('🔄 [orderCleanup] Starting...');
+  logger.info('[orderCleanup] Starting...');
 
   try {
     const cutoffTime = new Date(Date.now() - env.UNPAID_ORDER_CANCEL_MINUTES * 60 * 1000);
@@ -83,9 +83,9 @@ async function runOrderCleanup() {
       }
     }
 
-    logger.info(`✅ [orderCleanup] Completed — cancelled ${cancelled} order(s) in ${Date.now() - startTime}ms`);
+    logger.info(`[orderCleanup] Completed — cancelled ${cancelled} order(s) in ${Date.now() - startTime}ms`);
   } catch (err) {
-    logger.error('❌ [orderCleanup] Job failed', { error: err.message });
+    logger.error('[orderCleanup] Job failed', { error: err.message });
   } finally {
     await releaseLock();
   }

@@ -31,7 +31,7 @@ async function runClearOtps() {
     return;
   }
 
-  logger.info('🔄 [clearOtps] Clearing expired tokens...');
+  logger.info('[clearOtps] Clearing expired tokens...');
   try {
     const now = new Date();
 
@@ -61,11 +61,11 @@ async function runClearOtps() {
     }
 
     logger.info(
-      `✅ [clearOtps] Done — reset tokens: ${resetResult.modifiedCount}, ` +
+      `[clearOtps] Done — reset tokens: ${resetResult.modifiedCount}, ` +
       `verify tokens: ${verifyResult.modifiedCount}, Redis OTPs: ${otpCleared}`,
     );
   } catch (err) {
-    logger.error('❌ [clearOtps] Job failed', { error: err.message });
+    logger.error('[clearOtps] Job failed', { error: err.message });
   } finally {
     await releaseLock();
   }

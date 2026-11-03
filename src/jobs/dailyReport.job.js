@@ -32,7 +32,7 @@ async function runDailyReport() {
     return;
   }
 
-  logger.info('🔄 [dailyReport] Generating daily report...');
+  logger.info('[dailyReport] Generating daily report...');
   try {
     const adminService = require('../modules/admin/admin.service');
     const stats = await adminService.getDashboardStats();
@@ -45,9 +45,9 @@ async function runDailyReport() {
       cancelledOrders: stats.cancelledOrders,
     });
 
-    logger.info('✅ [dailyReport] Report sent to admin');
+    logger.info('[dailyReport] Report sent to admin');
   } catch (err) {
-    logger.error('❌ [dailyReport] Job failed', { error: err.message });
+    logger.error('[dailyReport] Job failed', { error: err.message });
   } finally {
     await releaseLock();
   }

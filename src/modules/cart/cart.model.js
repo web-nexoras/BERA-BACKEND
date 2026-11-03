@@ -58,8 +58,6 @@ const cartSchema = new Schema(
   { timestamps: true, versionKey: false },
 );
 
-cartSchema.index({ user: 1 });
-
 cartSchema.methods.getTotals = function getTotals() {
   const subtotal = this.items.reduce(
     (sum, item) => sum + item.price * item.quantity,

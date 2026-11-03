@@ -33,7 +33,7 @@ async function runInventoryAlert() {
     return;
   }
 
-  logger.info('🔄 [inventoryAlert] Starting...');
+  logger.info('[inventoryAlert] Starting...');
   try {
     const lowStockVariants = await ProductVariant.find({
       $expr: {
@@ -55,12 +55,12 @@ async function runInventoryAlert() {
 
     if (alertVariants.length > 0) {
       await sendLowStockAlertEmail(env.ADMIN_DEFAULT_EMAIL, alertVariants);
-      logger.info(`✅ [inventoryAlert] Alert sent — ${outOfStockVariants.length} out-of-stock, ${lowStockVariants.length} low-stock variants`);
+      logger.info(`[inventoryAlert] Alert sent — ${outOfStockVariants.length} out-of-stock, ${lowStockVariants.length} low-stock variants`);
     } else {
-      logger.info('✅ [inventoryAlert] No stock issues found');
+      logger.info('[inventoryAlert] No stock issues found');
     }
   } catch (err) {
-    logger.error('❌ [inventoryAlert] Job failed', { error: err.message });
+    logger.error('[inventoryAlert] Job failed', { error: err.message });
   } finally {
     await releaseLock();
   }

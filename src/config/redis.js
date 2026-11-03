@@ -36,12 +36,12 @@ function createRedisClient() {
 try {
   redisClient = createRedisClient();
 
-  redisClient.on('connect', () => logger.info('✅  Redis client connected'));
-  redisClient.on('ready', () => { isRedisConnected = true; logger.info('✅  Redis client ready'); });
-  redisClient.on('error', (err) => { isRedisConnected = false; logger.error('❌  Redis error', { error: err.message }); });
-  redisClient.on('close', () => { isRedisConnected = false; logger.warn('⚠️  Redis connection closed'); });
-  redisClient.on('reconnecting', () => logger.info('🔄  Redis reconnecting…'));
-  redisClient.on('end', () => { isRedisConnected = false; logger.warn('⚠️  Redis connection ended'); });
+  redisClient.on('connect', () => logger.info('Redis client connected'));
+  redisClient.on('ready', () => { isRedisConnected = true; logger.info('Redis client ready'); });
+  redisClient.on('error', (err) => { isRedisConnected = false; logger.error('Redis error', { error: err.message }); });
+  redisClient.on('close', () => { isRedisConnected = false; logger.warn('Redis connection closed'); });
+  redisClient.on('reconnecting', () => logger.info('Redis reconnecting…'));
+  redisClient.on('end', () => { isRedisConnected = false; logger.warn('Redis connection ended'); });
 } catch (err) {
   logger.error('Failed to create Redis client – cache disabled', { error: err.message });
   redisClient = null;

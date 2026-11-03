@@ -2,17 +2,17 @@
 
 const app = require('./app');
 const env = require('./config/env');
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 const logger = require('./utils/logger');
 const { initJobs } = require('./jobs/index');
 
 process.on('unhandledRejection', (reason) => {
-  logger.error('🚨 Unhandled Promise Rejection', { reason: String(reason) });
+  logger.error('Unhandled Promise Rejection', { reason: String(reason) });
   process.exit(1);
 });
 
 process.on('uncaughtException', (err) => {
-  logger.error('🚨 Uncaught Exception — shutting down', { error: err.message, stack: err.stack });
+  logger.error('Uncaught Exception — shutting down', { error: err.message, stack: err.stack });
   process.exit(1);
 });
 
@@ -29,7 +29,7 @@ async function bootstrap() {
     }
 
     const server = app.listen(env.PORT, () => {
-      logger.info(`🚀 Nexora Fashions Backend running on port ${env.PORT}`);
+      logger.info(`Nexora Fashions Backend running on port ${env.PORT}`);
       logger.info(`   Environment : ${env.NODE_ENV}`);
       logger.info(`   API Base    : ${env.APP_URL}/api/v1`);
       if (env.SWAGGER_ENABLED) logger.info(`   API Docs    : ${env.APP_URL}/api-docs`);

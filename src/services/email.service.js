@@ -32,7 +32,7 @@ async function sendVerificationEmail(user, verificationUrl) {
     subject: 'Verify your email — Nexora Fashions',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-        <h2>Welcome to Nexora Fashions, ${user.name}! 👋</h2>
+        <h2>Welcome to Nexora Fashions, ${user.name}!</h2>
         <p>Please verify your email address to get started:</p>
         <a href="${verificationUrl}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Verify Email</a>
         <p style="margin-top:16px;color:#666">Link expires in 24 hours. If you didn't create an account, ignore this email.</p>
@@ -58,10 +58,10 @@ async function sendPasswordResetEmail(user, resetUrl) {
 async function sendWelcomeEmail(user) {
   await sendEmail({
     to: { email: user.email, name: user.name },
-    subject: 'Welcome to Nexora Fashions! 🎉',
+    subject: 'Welcome to Nexora Fashions!',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-        <h2>You're all set, ${user.name}! 🎉</h2>
+        <h2>You're all set, ${user.name}!</h2>
         <p>Your email has been verified. Start exploring our latest collection:</p>
         <a href="${env.FRONTEND_URL}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Shop Now</a>
       </div>`,
@@ -78,7 +78,7 @@ async function sendOrderConfirmationEmail(user, order) {
     subject: `Order Confirmed — ${order.orderNumber}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-        <h2>Order Confirmed! ✅</h2>
+        <h2>Order Confirmed!</h2>
         <p>Hi ${user.name}, your order <strong>${order.orderNumber}</strong> has been placed.</p>
         <table border="1" cellpadding="8" style="width:100%;border-collapse:collapse">
           <thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead>
@@ -100,10 +100,10 @@ async function sendLowStockAlertEmail(adminEmail, products) {
 
   await sendEmail({
     to: adminEmail,
-    subject: `⚠️ Low Stock Alert — ${products.length} variants need attention`,
+    subject: `Low Stock Alert — ${products.length} variants need attention`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:700px;margin:auto">
-        <h2>⚠️ Low Stock Alert</h2>
+        <h2>Low Stock Alert</h2>
         <table border="1" cellpadding="8" style="width:100%;border-collapse:collapse">
           <thead><tr><th>Product</th><th>SKU</th><th>Stock</th><th>Threshold</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -115,10 +115,10 @@ async function sendLowStockAlertEmail(adminEmail, products) {
 async function sendDailyReportEmail(adminEmail, reportData) {
   await sendEmail({
     to: adminEmail,
-    subject: `📊 Daily Report — ${new Date().toLocaleDateString('en-BD')}`,
+    subject: `Daily Report — ${new Date().toLocaleDateString('en-BD')}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-        <h2>📊 Daily Sales Report</h2>
+        <h2>Daily Sales Report</h2>
         <p>Date: ${new Date().toLocaleDateString('en-BD', { timeZone: 'Asia/Dhaka' })}</p>
         <ul>
           <li><strong>Orders Today:</strong> ${reportData.ordersToday}</li>
