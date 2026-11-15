@@ -1,7 +1,7 @@
 'use strict';
 
 const User = require('../modules/auth/auth.model');
-const { redisClient, isAvailable } = require('../config/redis');
+const { redisClient, isAvailable, delByPattern } = require('../config/redis');
 const logger = require('../utils/logger');
 
 const LOCK_KEY = 'lock:job:clearOtps';
@@ -44,17 +44,7 @@ async function runClearOtps() {
     );
 
     // Clear OTP keys from Redis
-    let otpCleared = 0;
-    if (isAvailable()) {
-      try {
-        const otpKeys = await redisClient.keys('otp:*');
-        if (otpKeys.length > 0) {
-          otpCleared = await redisClient.del(...otpKeys);
-        }
-      } catch (redisErr) {
-        logger.error('[clearOtps] Redis OTP clear error', { error: redisErr.message });
-      }
-    }
+    const otpCleared = await delByPattern('otp:*');
 
     logger.info(
       `[clearOtps] Done — reset tokens: ${resetResult.modifiedCount}, ` +

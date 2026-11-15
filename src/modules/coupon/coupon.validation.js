@@ -3,24 +3,23 @@
 const { z } = require('zod');
 
 const objectId = z
-  .string({ required_error: 'ID is required' })
+  .string({ error: 'ID is required' })
   .length(24, 'Must be a valid 24-character ObjectId')
   .regex(/^[a-f\d]{24}$/i, 'Must be a valid ObjectId');
 
 const createCouponSchema = z
   .object({
     code: z
-      .string({ required_error: 'Coupon code is required' })
+      .string({ error: 'Coupon code is required' })
       .trim()
       .min(2, 'Code must be at least 2 characters')
       .max(50, 'Code cannot exceed 50 characters')
       .toUpperCase(),
     type: z.enum(['percentage', 'fixed'], {
-      required_error: 'Coupon type is required',
-      invalid_type_error: 'Type must be "percentage" or "fixed"',
+      error: (issue) => issue.input === undefined ? 'Coupon type is required' : 'Type must be "percentage" or "fixed"',
     }),
     value: z
-      .number({ required_error: 'Value is required', invalid_type_error: 'Value must be a number' })
+      .number({ error: (issue) => issue.input === undefined ? 'Value is required' : 'Value must be a number' })
       .positive('Value must be positive'),
     minimumOrderAmount: z
       .number()
@@ -33,7 +32,7 @@ const createCouponSchema = z
       .optional()
       .nullable(),
     expiresAt: z
-      .string({ required_error: 'Expiry date is required' })
+      .string({ error: 'Expiry date is required' })
       .datetime({ message: 'expiresAt must be a valid ISO 8601 date-time string' })
       .refine((d) => new Date(d) > new Date(), {
         message: 'Expiry date must be in the future',
@@ -86,7 +85,7 @@ const updateCouponSchema = z
 
 const applyCouponSchema = z.object({
   code: z
-    .string({ required_error: 'Coupon code is required' })
+    .string({ error: 'Coupon code is required' })
     .trim()
     .min(1)
     .toUpperCase(),

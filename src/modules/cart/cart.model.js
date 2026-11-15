@@ -70,6 +70,23 @@ cartSchema.index(
   },
 );
 
+cartSchema.index(
+  { sessionId: 1 },
+  {
+    name: 'sessionId_1',
+    partialFilterExpression: { sessionId: { $type: 'string' } },
+  },
+);
+
+cartSchema.index(
+  { updatedAt: 1 },
+  {
+    name: 'guest_cart_ttl_1',
+    expireAfterSeconds: 30 * 24 * 60 * 60,
+    partialFilterExpression: { user: null },
+  },
+);
+
 cartSchema.methods.getTotals = function getTotals() {
   const subtotal = this.items.reduce(
     (sum, item) => sum + item.price * item.quantity,

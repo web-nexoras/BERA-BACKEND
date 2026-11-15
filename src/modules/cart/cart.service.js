@@ -18,7 +18,7 @@ async function getOrCreateCart(userId, sessionId) {
     .populate('items.product', 'name images isActive isDeleted status')
     .populate('items.variant', 'size color price stock isActive product');
   if (!cart) {
-    cart = await Cart.create({ user: userId || null, sessionId: userId ? null : sessionId, items: [] });
+    cart = new Cart({ user: userId || null, sessionId: userId ? null : sessionId, items: [] });
   }
   return cart;
 }

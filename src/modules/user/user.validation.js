@@ -33,13 +33,13 @@ const updateProfileSchema = z
 const addAddressSchema = z.object({
   label: z.enum(['home', 'work', 'other']).default('home'),
   recipientName: z
-    .string({ required_error: 'Recipient name is required' })
+    .string({ error: 'Recipient name is required' })
     .trim()
     .min(2, 'Recipient name must be at least 2 characters')
     .max(100, 'Recipient name cannot exceed 100 characters'),
   phone: phoneField,
   addressLine1: z
-    .string({ required_error: 'Address line 1 is required' })
+    .string({ error: 'Address line 1 is required' })
     .trim()
     .min(5, 'Address line 1 must be at least 5 characters')
     .max(200, 'Address line 1 cannot exceed 200 characters'),
@@ -50,22 +50,22 @@ const addAddressSchema = z.object({
     .optional()
     .nullable(),
   city: z
-    .string({ required_error: 'City is required' })
+    .string({ error: 'City is required' })
     .trim()
     .min(2, 'City must be at least 2 characters')
     .max(100, 'City cannot exceed 100 characters'),
   district: z
-    .string({ required_error: 'District is required' })
+    .string({ error: 'District is required' })
     .trim()
     .min(2, 'District must be at least 2 characters')
     .max(100, 'District cannot exceed 100 characters'),
   division: z
-    .string({ required_error: 'Division is required' })
+    .string({ error: 'Division is required' })
     .trim()
     .min(2, 'Division must be at least 2 characters')
     .max(100, 'Division cannot exceed 100 characters'),
   postalCode: z
-    .string({ required_error: 'Postal code is required' })
+    .string({ error: 'Postal code is required' })
     .regex(/^\d{4}$/, 'Postal code must be a 4-digit number'),
   isDefault: z.boolean().default(false),
 });

@@ -10,6 +10,7 @@ const envSchema = z.object({
     .enum(['development', 'test', 'production'])
     .default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
+  TRUST_PROXY: z.coerce.number().int().nonnegative().default(1),
   APP_URL: z.string().url().default('http://localhost:5000'),
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
 
@@ -47,10 +48,7 @@ const envSchema = z.object({
 
   SSLCOMMERZ_STORE_ID: z.string().min(1, 'SSLCOMMERZ_STORE_ID is required'),
   SSLCOMMERZ_STORE_PASS: z.string().min(1, 'SSLCOMMERZ_STORE_PASS is required'),
-  SSLCOMMERZ_IS_LIVE: z
-    .string()
-    .transform((v) => v === 'true')
-    .default('false'),
+  SSLCOMMERZ_IS_LIVE: z.string().default('false').transform((v) => v === 'true'),
   SSLCOMMERZ_SUCCESS_URL: z.string().url().optional().default(''),
   SSLCOMMERZ_FAIL_URL: z.string().url().optional().default(''),
   SSLCOMMERZ_CANCEL_URL: z.string().url().optional().default(''),
@@ -86,12 +84,10 @@ const envSchema = z.object({
   CRON_INVENTORY_ALERT: z.string().default('0 9 * * *'),
   CRON_DAILY_REPORT: z.string().default('0 8 * * *'),
   CRON_CLEAR_OTPS: z.string().default('*/15 * * * *'),
+  CRON_PRODUCT_PUBLISH: z.string().default('* * * * *'),
   CRON_TIMEZONE: z.string().default('Asia/Dhaka'),
 
-  SWAGGER_ENABLED: z
-    .string()
-    .transform((v) => v === 'true')
-    .default('true'),
+  SWAGGER_ENABLED: z.string().default('false').transform((v) => v === 'true'),
 
   LOG_LEVEL: z
     .enum(['error', 'warn', 'info', 'http', 'debug'])

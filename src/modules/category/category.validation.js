@@ -6,9 +6,14 @@ const objectIdSchema = z
   .string()
   .regex(/^[a-f\d]{24}$/i, 'Invalid ObjectId format');
 
+const categoryQuerySchema = z.object({
+  includeInactive: z.enum(['true', 'false']).transform((value) => value === 'true').optional().default(false),
+  parent: z.union([z.literal('root'), objectIdSchema]).optional(),
+});
+
 const createCategorySchema = z.object({
   name: z
-    .string({ required_error: 'Category name is required' })
+    .string({ error: 'Category name is required' })
     .trim()
     .min(1, 'Name cannot be empty')
     .max(100, 'Name must be at most 100 characters'),
@@ -69,4 +74,5 @@ module.exports = {
   createCategorySchema,
   updateCategorySchema,
   categoryIdSchema,
+  categoryQuerySchema,
 };

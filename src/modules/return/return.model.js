@@ -6,7 +6,19 @@ const { Schema } = mongoose;
 // Snapshot the order item for the return record.
 const returnItemSchema = new Schema(
   {
-    orderItem: { type: Schema.Types.Mixed, required: true },
+    orderItemId: { type: Schema.Types.ObjectId, required: true },
+    orderItem: {
+      product: { type: Schema.Types.ObjectId, ref: 'Product' },
+      variant: { type: Schema.Types.ObjectId, ref: 'ProductVariant' },
+      name: { type: String, required: true, trim: true },
+      image: { type: String, trim: true },
+      size: { type: String, trim: true },
+      color: { type: String, trim: true },
+      sku: { type: String, trim: true },
+      quantity: { type: Number, required: true, min: 1 },
+      price: { type: Number, required: true, min: 0 },
+      totalPrice: { type: Number, required: true, min: 0 },
+    },
     reason: {
       type: String,
       required: [true, "Return reason is required"],
@@ -51,6 +63,7 @@ const returnSchema = new Schema(
     adminNotes: { type: String, trim: true },
     refundAmount: { type: Number, default: 0, min: 0 }, // BDT, may be partial
     refundMethod: { type: String, trim: true }, // e.g. 'original_payment', 'bank_transfer'
+    inventoryRestockedAt: { type: Date, default: null },
   },
   { timestamps: true, versionKey: false },
 );
@@ -59,6 +72,10 @@ returnSchema.index({ order: 1 });
 returnSchema.index({ user: 1 });
 returnSchema.index({ status: 1 });
 returnSchema.index({ createdAt: -1 });
+returnSchema.index(
+  { order: 1 },
+  { unique: true, partialFilterExpression: { status: { $in: ['requested', 'approved'] } } },
+);
 
 const Return = mongoose.model("Return", returnSchema);
 module.exports = Return;

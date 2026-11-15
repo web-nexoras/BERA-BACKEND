@@ -9,7 +9,7 @@ const { isAdmin } = require('../../middlewares/adminMiddleware');
 const { validateBody, validateParams, validateQuery } = require('../../middlewares/validateMiddleware');
 const {
   createProductSchema, updateProductSchema, addVariantsSchema,
-  productIdSchema, productVariantParamsSchema, productImageParamsSchema, productQuerySchema,
+  productIdSchema, productVariantParamsSchema, productImageParamsSchema, productQuerySchema, updateVariantSchema,
 } = require('./product.validation');
 
 router.get('/', validateQuery(productQuerySchema), productController.getProducts);
@@ -24,8 +24,8 @@ router.put('/:id', authenticate, isAdmin, validateParams(productIdSchema), valid
 router.delete('/:id', authenticate, isAdmin, validateParams(productIdSchema), productController.deleteProduct);
 
 router.post('/:id/variants', authenticate, isAdmin, validateParams(productIdSchema), validateBody(addVariantsSchema), productController.addVariants);
-router.put('/:id/variants/:variantId', authenticate, isAdmin, productController.updateVariant);
-router.delete('/:id/variants/:variantId', authenticate, isAdmin, productController.deleteVariant);
+router.put('/:id/variants/:variantId', authenticate, isAdmin, validateParams(productVariantParamsSchema), validateBody(updateVariantSchema), productController.updateVariant);
+router.delete('/:id/variants/:variantId', authenticate, isAdmin, validateParams(productVariantParamsSchema), productController.deleteVariant);
 
 router.post('/:id/images', authenticate, isAdmin, productController.uploadProductImages);
 router.delete('/:id/images/:imageId', authenticate, isAdmin, productController.deleteProductImage);

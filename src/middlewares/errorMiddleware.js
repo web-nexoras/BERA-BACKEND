@@ -8,7 +8,7 @@ const AppError = require('../utils/AppError');
 const { errorResponse } = require('../utils/apiResponse');
 
 function handleZodError(err) {
-  const errors = err.errors.map((e) => ({
+  const errors = err.issues.map((e) => ({
     field: e.path.join('.'),
     message: e.message,
     code: e.code,
@@ -50,15 +50,6 @@ function handleJWTExpiredError() {
 
 // Register after routes; Express requires four arguments.
 function errorMiddleware(err, req, res, next) { // eslint-disable-line no-unused-vars
-  logger.error('Unhandled error', {
-    message: err.message,
-    name: err.name,
-    statusCode: err.statusCode,
-    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
-    path: req.path,
-    method: req.method,
-  });
-
   let error = err;
 
   if (err instanceof ZodError) {
@@ -75,12 +66,22 @@ function errorMiddleware(err, req, res, next) { // eslint-disable-line no-unused
     error = handleJWTExpiredError();
   }
 
+  const statusCode = error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
+  const log = statusCode >= 500 ? logger.error : logger.warn;
+  log(statusCode >= 500 ? 'Unhandled error' : 'Request rejected', {
+    message: error.message,
+    name: error.name,
+    statusCode,
+    stack: statusCode >= 500 && process.env.NODE_ENV !== 'production' ? error.stack : undefined,
+    path: req.path,
+    method: req.method,
+  });
+
   if (error instanceof AppError && error.isOperational) {
     return errorResponse(res, error.message, error.statusCode, error.errors);
   }
 
   // Hide error details in production.
-  const statusCode = error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
   const message =
     process.env.NODE_ENV === 'production'
       ? 'Something went wrong. Please try again later.'

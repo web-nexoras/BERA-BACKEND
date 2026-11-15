@@ -6,7 +6,10 @@ const { successResponse, paginatedResponse } = require('../../utils/apiResponse'
 const asyncHandler = require('../../utils/asyncHandler');
 
 const getBrands = asyncHandler(async (req, res) => {
-  const brands = await brandService.getBrands(req.query);
+  const brands = await brandService.getBrands({
+    ...req.query,
+    includeInactive: req.query.includeInactive === true && req.user?.role === 'admin',
+  });
   return successResponse(res, 'Brands retrieved successfully', brands);
 });
 

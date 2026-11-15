@@ -22,8 +22,4 @@ function createdResponse(res, message, data = null) {
   return successResponse(res, message, data, StatusCodes.CREATED);
 }
 
-function noContentResponse(res) {
-  return res.status(StatusCodes.NO_CONTENT).send();
-}
-
-module.exports = { successResponse, errorResponse, paginatedResponse, createdResponse, noContentResponse };
+module.exports = { successResponse, errorResponse, paginatedResponse, createdResponse };

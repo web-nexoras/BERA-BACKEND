@@ -33,6 +33,14 @@ function isDuplicateOrderNumberError(err) {
 // Reserve stock and create the order atomically.
 async function checkout(userId, sessionId, data) {
   const { shippingAddress, paymentMethod, couponCode, notes } = data;
+  const Settings = require('../admin/settings.model');
+  const settings = await Settings.getSettings();
+  if (paymentMethod === 'cod' && !settings.codEnabled) {
+    throw new AppError('Cash on delivery is currently unavailable.', StatusCodes.CONFLICT);
+  }
+  if (paymentMethod === 'sslcommerz' && !settings.sslcommerzEnabled) {
+    throw new AppError('Online payment is currently unavailable.', StatusCodes.CONFLICT);
+  }
   const normalizedPhone = sanitizePhoneNumber(shippingAddress.phone);
   if (!normalizedPhone) throw new AppError('Please provide a valid Bangladeshi phone number.', StatusCodes.BAD_REQUEST);
   shippingAddress.phone = normalizedPhone;
@@ -331,7 +339,6 @@ async function generateInvoice(orderId) {
   if (!order) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
 
   // Lazy-load to avoid a circular dependency.
-  const Settings = require('../admin/settings.model');
   const settings = await Settings.getSettings();
 
   return {

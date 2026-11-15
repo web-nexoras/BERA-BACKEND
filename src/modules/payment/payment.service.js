@@ -92,7 +92,7 @@ const initSSLCommerzPayment = async (order, user) => {
   const response = await axios.post(
     `${baseUrl}/gwprocess/v4/api.php`,
     payload.toString(),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10_000 },
   );
 
   const { data } = response;
@@ -155,6 +155,7 @@ const verifySSLCommerzPayment = async (sslData) => {
   try {
     validationResp = await axios.get(`${getSSLBase()}/validator/api/validationserverAPI.php`, {
       params: { val_id, store_id: env.SSLCOMMERZ_STORE_ID, store_passwd: env.SSLCOMMERZ_STORE_PASS, v: 1, format: 'json' },
+      timeout: 10_000,
     });
   } catch (err) {
     logger.error('SSLCommerz validation API error', { err: err.message });

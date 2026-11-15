@@ -5,8 +5,31 @@ const productService = require('./product.service');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');
 const asyncHandler = require('../../utils/asyncHandler');
 const multer = require('multer');
+const AppError = require('../../utils/AppError');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, callback) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      return callback(new AppError('Images must be JPEG, PNG, or WebP', StatusCodes.BAD_REQUEST));
+    }
+    return callback(null, true);
+  },
+});
+
+function uploadImagesMiddleware(req, res, next) {
+  upload.array('images', 10)(req, res, (error) => {
+    if (!error) return next();
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return next(new AppError('Image exceeds the 5 MB size limit', 413));
+    }
+    if (error instanceof multer.MulterError) {
+      return next(new AppError(error.message, StatusCodes.BAD_REQUEST));
+    }
+    return next(error);
+  });
+}
 
 const getProducts = asyncHandler(async (req, res) => {
   const { products, pagination } = await productService.getProducts(req.query);
@@ -69,7 +92,7 @@ const deleteVariant = asyncHandler(async (req, res) => {
 });
 
 const uploadProductImages = [
-  upload.array('images', 10),
+  uploadImagesMiddleware,
   asyncHandler(async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'No images provided' });

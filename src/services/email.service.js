@@ -20,7 +20,7 @@ async function sendEmail({ to, subject, html, text }) {
         htmlContent: html,
         textContent: text || subject,
       },
-      { headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json' } },
+      { headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json' }, timeout: 10_000 },
     );
     logger.info('Email sent', { to: to.email || to, subject });
   } catch (err) {

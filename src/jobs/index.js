@@ -9,6 +9,7 @@ const { runCouponExpiry } = require('./couponExpiry.job');
 const { runInventoryAlert } = require('./inventoryAlert.job');
 const { runDailyReport } = require('./dailyReport.job');
 const { runClearOtps } = require('./clearOtps.job');
+const { runScheduledProductPublish } = require('./scheduledProductPublish.job');
 
 // Redis locks prevent duplicate cron runs.
 function initJobs() {
@@ -29,6 +30,9 @@ function initJobs() {
 
   cron.schedule(env.CRON_CLEAR_OTPS, async () => { await runClearOtps(); }, { timezone: TZ });
   logger.info(`  Clear OTPs: ${env.CRON_CLEAR_OTPS}`);
+
+  cron.schedule(env.CRON_PRODUCT_PUBLISH, async () => { await runScheduledProductPublish(); }, { timezone: TZ });
+  logger.info(`  Scheduled Product Publish: ${env.CRON_PRODUCT_PUBLISH}`);
 
   logger.info('All cron jobs initialized');
 }

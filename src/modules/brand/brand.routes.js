@@ -4,12 +4,12 @@ const express = require('express');
 const router = express.Router();
 
 const brandController = require('./brand.controller');
-const { authenticate } = require('../../middlewares/authMiddleware');
+const { authenticate, optionalAuth } = require('../../middlewares/authMiddleware');
 const { isAdmin } = require('../../middlewares/adminMiddleware');
-const { validateBody, validateParams } = require('../../middlewares/validateMiddleware');
-const { createBrandSchema, updateBrandSchema, brandIdSchema } = require('./brand.validation');
+const { validateBody, validateParams, validateQuery } = require('../../middlewares/validateMiddleware');
+const { createBrandSchema, updateBrandSchema, brandIdSchema, brandQuerySchema } = require('./brand.validation');
 
-router.get('/', brandController.getBrands);
+router.get('/', optionalAuth, validateQuery(brandQuerySchema), brandController.getBrands);
 router.get('/:id', validateParams(brandIdSchema), brandController.getBrandById);
 
 router.post('/', authenticate, isAdmin, validateBody(createBrandSchema), brandController.createBrand);

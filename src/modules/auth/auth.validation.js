@@ -3,13 +3,13 @@
 const { z } = require('zod');
 
 const emailField = z
-  .string({ required_error: 'Email is required' })
+  .string({ error: 'Email is required' })
   .email('Please provide a valid email address')
   .toLowerCase()
   .trim();
 
 const passwordField = z
-  .string({ required_error: 'Password is required' })
+  .string({ error: 'Password is required' })
   .min(8, 'Password must be at least 8 characters')
   .max(128, 'Password cannot exceed 128 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
@@ -30,7 +30,7 @@ const phoneField = z
 
 const registerSchema = z.object({
   name: z
-    .string({ required_error: 'Name is required' })
+    .string({ error: 'Name is required' })
     .trim()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name cannot exceed 100 characters'),
@@ -41,7 +41,7 @@ const registerSchema = z.object({
 
 const loginSchema = z.object({
   email: emailField,
-  password: z.string({ required_error: 'Password is required' }).min(1, 'Password is required'),
+  password: z.string({ error: 'Password is required' }).min(1, 'Password is required'),
 });
 
 const forgotPasswordSchema = z.object({
@@ -50,14 +50,14 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordParamsSchema = z.object({
   token: z
-    .string({ required_error: 'Reset token is required' })
+    .string({ error: 'Reset token is required' })
     .min(1, 'Reset token is required'),
 });
 
 const resetPasswordSchema = z
   .object({
     password: passwordField,
-    confirmPassword: z.string({ required_error: 'Please confirm your password' }),
+    confirmPassword: z.string({ error: 'Please confirm your password' }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -66,7 +66,7 @@ const resetPasswordSchema = z
 
 const verifyEmailSchema = z.object({
   token: z
-    .string({ required_error: 'Verification token is required' })
+    .string({ error: 'Verification token is required' })
     .min(1, 'Verification token is required'),
 });
 
@@ -74,10 +74,10 @@ const verifyEmailSchema = z.object({
 const changePasswordSchema = z
   .object({
     currentPassword: z
-      .string({ required_error: 'Current password is required' })
+      .string({ error: 'Current password is required' })
       .min(1, 'Current password is required'),
     newPassword: passwordField,
-    confirmPassword: z.string({ required_error: 'Please confirm your new password' }),
+    confirmPassword: z.string({ error: 'Please confirm your new password' }),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: 'Passwords do not match',

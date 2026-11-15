@@ -3,6 +3,8 @@
 const { StatusCodes } = require('http-status-codes');
 const Product = require('./product.model');
 const ProductVariant = require('../variant/variant.model');
+const Cart = require('../cart/cart.model');
+const Order = require('../order/order.model');
 const InventoryLog = require('../inventory/inventory.model');
 const { get, set, del, delByPattern } = require('../../config/redis');
 const { uploadImage, deleteImage } = require('../../config/cloudinary');
@@ -191,8 +193,10 @@ async function createProduct(data) {
 }
 
 async function updateProduct(id, data) {
-  const product = await Product.findOneAndUpdate({ _id: id, isDeleted: false }, data, { new: true, runValidators: true });
+  const product = await Product.findOne({ _id: id, isDeleted: false });
   if (!product) throw new AppError('Product not found', StatusCodes.NOT_FOUND);
+  Object.assign(product, data);
+  await product.save();
   logger.info('Product updated', { id });
   await del(`product:${id}`);
   await delByPattern('products:*');
@@ -234,15 +238,26 @@ async function addVariants(productId, variants, adminId) {
 }
 
 async function updateVariant(productId, variantId, data) {
-  const variant = await ProductVariant.findOneAndUpdate({ _id: variantId, product: productId }, data, { new: true, runValidators: true });
+  const { stock: _ignoredStock, product: _ignoredProduct, ...allowedChanges } = data;
+  const variant = await ProductVariant.findOneAndUpdate({ _id: variantId, product: productId }, { $set: allowedChanges }, { new: true, runValidators: true });
   if (!variant) throw new AppError('Variant not found', StatusCodes.NOT_FOUND);
   await del(`product:${productId}`);
   return variant;
 }
 
 async function deleteVariant(productId, variantId) {
-  const variant = await ProductVariant.findOneAndDelete({ _id: variantId, product: productId });
+  const variant = await ProductVariant.findOne({ _id: variantId, product: productId });
   if (!variant) throw new AppError('Variant not found', StatusCodes.NOT_FOUND);
+  const [inCart, inOrder] = await Promise.all([
+    Cart.exists({ 'items.variant': variantId }),
+    Order.exists({ 'items.variant': variantId }),
+  ]);
+  if (inCart || inOrder) {
+    variant.isActive = false;
+    await variant.save({ validateBeforeSave: true });
+  } else {
+    await ProductVariant.deleteOne({ _id: variantId, product: productId });
+  }
   await del(`product:${productId}`);
 }
 

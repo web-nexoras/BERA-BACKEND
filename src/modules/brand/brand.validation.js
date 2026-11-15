@@ -6,9 +6,13 @@ const objectIdSchema = z
   .string()
   .regex(/^[a-f\d]{24}$/i, 'Invalid ObjectId format');
 
+const brandQuerySchema = z.object({
+  includeInactive: z.enum(['true', 'false']).transform((value) => value === 'true').optional().default(false),
+});
+
 const createBrandSchema = z.object({
   name: z
-    .string({ required_error: 'Brand name is required' })
+    .string({ error: 'Brand name is required' })
     .trim()
     .min(1, 'Name cannot be empty')
     .max(100, 'Name must be at most 100 characters'),
@@ -74,4 +78,5 @@ module.exports = {
   createBrandSchema,
   updateBrandSchema,
   brandIdSchema,
+  brandQuerySchema,
 };

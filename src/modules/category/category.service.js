@@ -72,8 +72,22 @@ async function updateCategory(id, data) {
     if (conflict) throw new AppError('A category with this name already exists', StatusCodes.CONFLICT);
   }
 
-  if (data.parent && data.parent.toString() === id.toString()) {
-    throw new AppError('A category cannot be its own parent', StatusCodes.BAD_REQUEST);
+  if (data.parent) {
+    let ancestorId = data.parent;
+    const visited = new Set();
+    while (ancestorId) {
+      const ancestorKey = String(ancestorId);
+      if (ancestorKey === String(id)) {
+        throw new AppError('Category parent would create a cycle', StatusCodes.BAD_REQUEST);
+      }
+      if (visited.has(ancestorKey)) {
+        throw new AppError('Cannot update a category in a cyclic hierarchy', StatusCodes.CONFLICT);
+      }
+      visited.add(ancestorKey);
+      const ancestor = await Category.findById(ancestorId).select('parent').lean();
+      if (!ancestor) throw new AppError('Parent category not found', StatusCodes.BAD_REQUEST);
+      ancestorId = ancestor.parent;
+    }
   }
 
   Object.assign(category, data);

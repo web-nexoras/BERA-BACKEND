@@ -5,6 +5,7 @@ const AppError = require('../../utils/AppError');
 const logger = require('../../utils/logger');
 const ShippingZone = require('./shipping.model');
 const env = require('../../config/env');
+const Settings = require('../admin/settings.model');
 
 const DEFAULT_ZONES = [
   {
@@ -45,9 +46,16 @@ const getShippingCharge = async (district) => {
   const fallbackZone = await ShippingZone.findOne({ isActive: true, name: 'outside dhaka' })
     .collation({ locale: 'en', strength: 2 })
     .lean();
+  const settings = await Settings.getSettings();
+  const insideDhakaDistricts = new Set(['dhaka', 'narayanganj', 'gazipur', 'manikganj', 'munshiganj', 'narsingdi']);
+  const settingsFallback = insideDhakaDistricts.has(normalizedDistrict)
+    ? settings.deliveryChargeInsideDhaka
+    : settings.deliveryChargeOutsideDhaka;
   return {
     zone: fallbackZone || null,
-    charge: fallbackZone?.charge ?? (env.SHIPPING_CHARGE_OUTSIDE_DHAKA || 120),
+    charge: settingsFallback ?? (insideDhakaDistricts.has(normalizedDistrict)
+      ? env.SHIPPING_CHARGE_INSIDE_DHAKA
+      : env.SHIPPING_CHARGE_OUTSIDE_DHAKA),
     estimatedDays: fallbackZone?.estimatedDays ?? '3-5 days',
   };
 };

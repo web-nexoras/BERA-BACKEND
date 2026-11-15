@@ -14,23 +14,36 @@ const env = require('./config/env');
 const logger = require('./utils/logger');
 const apiRoutes = require('./routes/index');
 const errorMiddleware = require('./middlewares/errorMiddleware');
+const maintenanceMode = require('./middlewares/maintenanceMode');
 
 const app = express();
+app.set('trust proxy', env.TRUST_PROXY);
 
 app.use(helmet());
 
+// Return a predictable client error for disallowed browser origins.
+app.use((req, res, next) => {
+  const origin = req.get('Origin');
+  if (origin && !env.CORS_ORIGINS_LIST.includes(origin)) {
+    return res.status(StatusCodes.FORBIDDEN).json({
+      success: false,
+      message: 'Origin not allowed',
+    });
+  }
+  return next();
+});
+
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow requests without Origin
-      if (env.CORS_ORIGINS_LIST.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS: Origin '${origin}' not allowed`));
-    },
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-Id'],
+    exposedHeaders: ['X-Session-Id'],
   }),
 );
+
+app.use(maintenanceMode);
 
 app.use(compression());
 

@@ -12,7 +12,7 @@ const adjustStockSchema = z.object({
   variantId: objectIdSchema,
 
   quantity: z.coerce
-    .number({ required_error: 'Quantity is required' })
+    .number({ error: 'Quantity is required' })
     .int('Quantity must be an integer')
     .positive('Quantity must be a positive integer'),
 

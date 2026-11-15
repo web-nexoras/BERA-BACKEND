@@ -7,18 +7,18 @@ const objectIdSchema = z
   .regex(/^[a-f\d]{24}$/i, 'Invalid ObjectId format');
 
 const positiveNumber = z.coerce
-  .number({ invalid_type_error: 'Must be a number' })
+  .number({ error: 'Must be a number' })
   .nonnegative('Value cannot be negative');
 
 const createProductSchema = z.object({
   name: z
-    .string({ required_error: 'Product name is required' })
+    .string({ error: 'Product name is required' })
     .trim()
     .min(2, 'Name must be at least 2 characters')
     .max(200, 'Name must be at most 200 characters'),
 
   description: z
-    .string({ required_error: 'Description is required' })
+    .string({ error: 'Description is required' })
     .trim()
     .min(10, 'Description must be at least 10 characters'),
 
@@ -30,7 +30,7 @@ const createProductSchema = z.object({
     .default(''),
 
   sku: z
-    .string({ required_error: 'SKU is required' })
+    .string({ error: 'SKU is required' })
     .trim()
     .min(2, 'SKU must be at least 2 characters')
     .max(50, 'SKU must be at most 50 characters')
@@ -76,7 +76,7 @@ const variantSchema = z.object({
     .default(''),
 
   sku: z
-    .string({ required_error: 'Variant SKU is required' })
+    .string({ error: 'Variant SKU is required' })
     .trim()
     .min(2, 'SKU must be at least 2 characters')
     .toUpperCase(),
@@ -99,12 +99,13 @@ const addVariantsSchema = z.object({
 });
 
 const updateVariantSchema = variantSchema
-  .omit({ sku: true })
+  .omit({ sku: true, stock: true })
   .extend({
     sku: z.string().trim().min(2).toUpperCase().optional(),
     isActive: z.boolean().optional(),
   })
-  .partial();
+  .partial()
+  .strict();
 
 const productQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),

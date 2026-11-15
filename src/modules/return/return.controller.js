@@ -19,7 +19,7 @@ const getAllReturns = asyncHandler(async (req, res) => {
 });
 
 const updateReturnStatus = asyncHandler(async (req, res) => {
-  const returnDoc = await returnService.updateReturnStatus(req.params.returnId, req.body.status, req.body.adminNotes, req.body.refundAmount);
+  const returnDoc = await returnService.updateReturnStatus(req.params.returnId, req.body, req.user.id);
   return successResponse(res, 'Return status updated', returnDoc);
 });
 

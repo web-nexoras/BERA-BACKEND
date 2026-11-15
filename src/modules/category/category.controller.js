@@ -6,7 +6,10 @@ const { successResponse } = require('../../utils/apiResponse');
 const asyncHandler = require('../../utils/asyncHandler');
 
 const getCategories = asyncHandler(async (req, res) => {
-  const categories = await categoryService.getCategories(req.query);
+  const categories = await categoryService.getCategories({
+    ...req.query,
+    includeInactive: req.query.includeInactive === true && req.user?.role === 'admin',
+  });
   return successResponse(res, 'Categories retrieved successfully', categories);
 });
 

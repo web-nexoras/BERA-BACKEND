@@ -82,7 +82,6 @@ const productSchema = new mongoose.Schema(
   },
 );
 
-productSchema.index({ slug: 1 });
 productSchema.index({ category: 1 });
 productSchema.index({ brand: 1 });
 productSchema.index({ isFeatured: 1 });

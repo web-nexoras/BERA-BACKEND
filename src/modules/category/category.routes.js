@@ -4,12 +4,12 @@ const express = require('express');
 const router = express.Router();
 
 const categoryController = require('./category.controller');
-const { authenticate } = require('../../middlewares/authMiddleware');
+const { authenticate, optionalAuth } = require('../../middlewares/authMiddleware');
 const { isAdmin } = require('../../middlewares/adminMiddleware');
-const { validateBody, validateParams } = require('../../middlewares/validateMiddleware');
-const { createCategorySchema, updateCategorySchema, categoryIdSchema } = require('./category.validation');
+const { validateBody, validateParams, validateQuery } = require('../../middlewares/validateMiddleware');
+const { createCategorySchema, updateCategorySchema, categoryIdSchema, categoryQuerySchema } = require('./category.validation');
 
-router.get('/', categoryController.getCategories);
+router.get('/', optionalAuth, validateQuery(categoryQuerySchema), categoryController.getCategories);
 router.get('/tree', categoryController.getCategoryTree);
 router.get('/:id', validateParams(categoryIdSchema), categoryController.getCategoryById);
 

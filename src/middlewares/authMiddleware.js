@@ -83,7 +83,9 @@ const crypto = require('crypto');
 
 function attachSession(req, res, next) {
   const sid = req.headers['x-session-id'] || req.headers['X-Session-Id'];
-  req.sessionId = sid && String(sid).trim() ? String(sid).trim() : crypto.randomUUID();
+  const candidate = sid == null ? '' : String(sid).trim();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate);
+  req.sessionId = isUuid ? candidate : crypto.randomUUID();
   res.setHeader('X-Session-Id', req.sessionId);
   return next();
 }

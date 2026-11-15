@@ -13,11 +13,9 @@ function createRedisClient() {
     enableReadyCheck: true,
     lazyConnect: false,
     retryStrategy(times) {
-      if (times > 5) {
-        logger.warn('Redis: max reconnection attempts reached – operating without cache');
-        return null;
-      }
-      return Math.min(times * 500, 5000);
+      const delay = Math.min(500 * (2 ** Math.min(times - 1, 16)), 30_000);
+      logger.warn('Redis reconnect scheduled', { attempt: times, delayMs: delay });
+      return delay;
     },
   };
 
@@ -106,9 +104,19 @@ async function exists(key) {
 async function delByPattern(pattern) {
   if (!isAvailable()) return 0;
   try {
-    const keys = await redisClient.keys(pattern);
-    if (keys.length === 0) return 0;
-    return await redisClient.del(...keys);
+    let cursor = '0';
+    let totalDeleted = 0;
+    do {
+      const [nextCursor, keys] = await redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
+      if (keys.length) {
+        const pipeline = redisClient.pipeline();
+        for (const key of keys) pipeline.del(key);
+        const results = await pipeline.exec();
+        totalDeleted += results.reduce((count, [err, deleted]) => count + (err ? 0 : deleted), 0);
+      }
+    } while (cursor !== '0');
+    return totalDeleted;
   } catch (err) {
     logger.error('Redis DEL pattern error', { pattern, error: err.message });
     return 0;
