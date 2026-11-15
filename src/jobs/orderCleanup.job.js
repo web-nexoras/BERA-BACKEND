@@ -19,11 +19,6 @@ async function acquireLock() {
   } catch { return true; }
 }
 
-async function releaseLock() {
-  if (!isAvailable()) return;
-  try { await redisClient.del(LOCK_KEY); } catch {}
-}
-
 async function runOrderCleanup() {
   const acquired = await acquireLock();
   if (!acquired) {
@@ -40,7 +35,7 @@ async function runOrderCleanup() {
     const unpaidOrders = await Order.find({
       orderStatus: 'pending',
       paymentMethod: 'sslcommerz',
-      paymentStatus: 'pending',
+      paymentStatus: { $in: ['pending', 'failed'] },
       createdAt: { $lt: cutoffTime },
     });
 
@@ -52,18 +47,38 @@ async function runOrderCleanup() {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-          for (const item of order.items) {
+          const cancelledOrder = await Order.findOneAndUpdate(
+            {
+              _id: order._id,
+              orderStatus: 'pending',
+              paymentStatus: { $in: ['pending', 'failed'] },
+            },
+            {
+              $set: {
+                orderStatus: 'cancelled',
+                paymentStatus: 'failed',
+                cancelReason: 'Auto-cancelled: payment not received within time limit',
+              },
+              $push: {
+                statusHistory: {
+                  status: 'cancelled',
+                  note: 'Auto-cancelled by system',
+                  updatedAt: new Date(),
+                },
+              },
+            },
+            { session, new: true },
+          );
+
+          if (!cancelledOrder) {
+            await session.commitTransaction();
+            continue;
+          }
+
+          for (const item of cancelledOrder.items) {
             await releaseStock(item.variant.toString(), item.quantity, session);
           }
-          order.orderStatus = 'cancelled';
-          order.cancelReason = 'Auto-cancelled: payment not received within time limit';
-          order.statusHistory.push({
-            status: 'cancelled',
-            note: 'Auto-cancelled by system',
-            updatedAt: new Date(),
-          });
-          await order.save({ session });
-          await Payment.findOneAndUpdate({ order: order._id }, { status: 'failed' }, { session });
+          await Payment.findOneAndUpdate({ order: cancelledOrder._id }, { status: 'failed' }, { session });
           await session.commitTransaction();
           cancelled++;
         } catch (err) {
@@ -80,8 +95,6 @@ async function runOrderCleanup() {
     logger.info(`[orderCleanup] Completed — cancelled ${cancelled} order(s) in ${Date.now() - startTime}ms`);
   } catch (err) {
     logger.error('[orderCleanup] Job failed', { error: err.message });
-  } finally {
-    await releaseLock();
   }
 }
 

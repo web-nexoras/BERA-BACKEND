@@ -2,6 +2,7 @@
 
 const asyncHandler = require('../../utils/asyncHandler');
 const paymentService = require('./payment.service');
+const env = require('../../config/env');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');
 const { StatusCodes } = require('http-status-codes');
 
@@ -12,7 +13,11 @@ const initiatePayment = asyncHandler(async (req, res) => {
 
 const sslcommerzSuccess = asyncHandler(async (req, res) => {
   const result = await paymentService.verifySSLCommerzPayment(req.body);
-  res.redirect(`${process.env.FRONTEND_URL}/order/${result.ok ? 'success' : 'failed'}`);
+  if (result.ok) {
+    const orderId = result.order?._id;
+    return res.redirect(`${env.FRONTEND_URL}/order/success${orderId ? `?orderId=${encodeURIComponent(orderId)}` : ''}`);
+  }
+  return res.redirect(`${env.FRONTEND_URL}/order/failed`);
 });
 
 const sslcommerzFail = asyncHandler(async (req, res) => {
@@ -26,9 +31,8 @@ const sslcommerzCancel = asyncHandler(async (req, res) => {
 });
 
 const sslcommerzIPN = asyncHandler(async (req, res) => {
-  const result = await paymentService.verifySSLCommerzPayment(req.body);
-  if (!result.ok) return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'IPN rejected', reason: result.reason });
-  return successResponse(res, 'IPN received', result);
+  await paymentService.verifySSLCommerzPayment(req.body);
+  return successResponse(res, 'IPN received');
 });
 
 const getMyTransactions = asyncHandler(async (req, res) => {
