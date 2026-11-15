@@ -16,22 +16,18 @@ cloudinary.config({
 // Upload in-memory image to Cloudinary.
 async function uploadImage(buffer, folder, publicId) {
   try {
+    const options = {
+      folder,
+      resource_type: 'image',
+      quality: 'auto:good',
+      fetch_format: 'auto',
+      ...(publicId ? { public_id: publicId, overwrite: true } : {}),
+    };
+
     const result = await new Promise((resolve, reject) => {
-      const opts = {
-        folder,
-        resource_type: 'image',
-        quality: 'auto:good',
-        fetch_format: 'auto',
-      };
-
-      if (publicId) {
-        opts.public_id = publicId;
-        opts.overwrite = true;
-      }
-
-      const stream = cloudinary.uploader.upload_stream(opts, (error, res) => {
+      const stream = cloudinary.uploader.upload_stream(options, (error, response) => {
         if (error) return reject(error);
-        resolve(res);
+        resolve(response);
       });
 
       stream.end(buffer);

@@ -205,8 +205,8 @@ async function uploadProductImages(productId, files) {
   for (const file of files) {
     const result = await uploadImage(file.buffer, `nexora/products/${productId}`);
     uploadedImages.push({
-      url: result.secure_url,
-      publicId: result.public_id,
+      url: result.url,
+      publicId: result.publicId,
       isMain: product.images.length === 0 && uploadedImages.length === 0, // first image = main
     });
   }
