@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const { StatusCodes } = require('http-status-codes');
 
 const env = require('../../config/env');
@@ -142,7 +143,7 @@ const verifySSLCommerzPayment = async (sslData) => {
   if (payment.status === 'completed') return result(true, order, payment, 'already_completed');
 
   if (!verifyIPNHash(sslData)) {
-    logger.warn('IPN hash verification failed — callback rejected', { tran_id });
+    logger.warn('IPN hash verification failed ï¿½ callback rejected', { tran_id });
     return result(false, order, payment, 'invalid_ipn_hash');
   }
   if (!['VALID', 'VALIDATED'].includes(status) || !val_id) {
@@ -310,26 +311,63 @@ const getAllTransactions = async (query) => {
 const processRefund = async (orderId, amount, adminId) => {
   const Payment = getPayment();
   const Order = getOrder();
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const payment = await Payment.findOne({ order: orderId }).session(session);
+    if (!payment) throw new AppError('No payment found for this order.', StatusCodes.NOT_FOUND);
+    if (payment.status !== 'completed') throw new AppError('Only completed payments can be refunded.', StatusCodes.BAD_REQUEST);
 
-  const payment = await Payment.findOne({ order: orderId });
-  if (!payment) throw new AppError('No payment found for this order.', StatusCodes.NOT_FOUND);
-  if (payment.status !== 'completed') throw new AppError('Only completed payments can be refunded.', StatusCodes.BAD_REQUEST);
+    const previousRefundAmount = Number(payment.refundAmount || 0);
+    const remainingAmount = Number((payment.amount - previousRefundAmount).toFixed(2));
+    const refundAmount = amount == null ? remainingAmount : Number(amount);
+    if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+      throw new AppError('Refund amount must be greater than zero.', StatusCodes.BAD_REQUEST);
+    }
+    if (refundAmount > remainingAmount) throw new AppError('Refund amount exceeds remaining paid amount.', StatusCodes.BAD_REQUEST);
 
-  const refundAmount = amount ?? payment.amount;
-  if (refundAmount > payment.amount) throw new AppError('Refund amount exceeds paid amount.', StatusCodes.BAD_REQUEST);
+    const totalRefundAmount = Number((previousRefundAmount + refundAmount).toFixed(2));
+    const fullyRefunded = totalRefundAmount >= Number(payment.amount);
+    const updatedPayment = await Payment.findOneAndUpdate(
+      { _id: payment._id, status: 'completed', refundAmount: previousRefundAmount },
+      {
+        $set: {
+          refundAmount: totalRefundAmount,
+          refundedAt: fullyRefunded ? new Date() : payment.refundedAt,
+          refundStatus: fullyRefunded ? 'refunded' : 'partial',
+          status: fullyRefunded ? 'refunded' : 'completed',
+        },
+      },
+      { session, new: true, runValidators: true },
+    );
+    if (!updatedPayment) throw new AppError('Payment changed while processing the refund.', StatusCodes.CONFLICT);
 
-  payment.status = 'refunded';
-  payment.refundAmount = refundAmount;
-  payment.refundedAt = new Date();
-  await payment.save();
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId },
+      {
+        $set: { paymentStatus: fullyRefunded ? 'refunded' : 'partial_refund' },
+        $push: {
+          statusHistory: {
+            status: fullyRefunded ? 'refunded' : 'partial_refund',
+            note: 'Refund of BDT ' + refundAmount + ' processed.',
+            updatedAt: new Date(),
+            updatedBy: adminId,
+          },
+        },
+      },
+      { session, new: true },
+    );
+    if (!order) throw new AppError('Order not found.', StatusCodes.NOT_FOUND);
 
-  await Order.findByIdAndUpdate(orderId, {
-    paymentStatus: 'refunded',
-    $push: { statusHistory: { status: 'refunded', note: `Refund of BDT ${refundAmount} processed.`, updatedAt: new Date(), updatedBy: adminId } },
-  });
-
-  logger.info('Refund processed', { orderId, refundAmount, adminId });
-  return payment;
+    await session.commitTransaction();
+    logger.info('Refund processed', { orderId, refundAmount, totalRefundAmount, adminId });
+    return updatedPayment;
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
+  }
 };
 
 // Mark payment failed and update the order.

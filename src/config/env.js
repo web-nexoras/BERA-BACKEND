@@ -78,10 +78,7 @@ const envSchema = z.object({
     .string()
     .email()
     .default('admin@nexorafashions.com'),
-  ADMIN_DEFAULT_PASSWORD: z
-    .string()
-    .min(8)
-    .default('Admin@123456'),
+  ADMIN_DEFAULT_PASSWORD: z.string().optional(),
 
   CRON_ORDER_CLEANUP: z.string().default('*/30 * * * *'),
   CRON_COUPON_EXPIRY: z.string().default('0 0 * * *'),

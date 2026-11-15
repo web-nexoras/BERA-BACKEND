@@ -10,6 +10,7 @@ REST API backend for the Nexora Fashions e-commerce platform. It provides custom
 - [Getting started](#getting-started)
 - [Environment configuration](#environment-configuration)
 - [Run the server](#run-the-server)
+- [Create or promote an admin](#create-or-promote-an-admin)
 - [API overview](#api-overview)
 - [Authentication](#authentication)
 - [Request and response conventions](#request-and-response-conventions)
@@ -80,7 +81,8 @@ The application loads `.env` from the project working directory and validates co
 | `OTP_EXPIRES_IN_MINUTES`, `PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES` | OTP and password reset expiry. |
 | `SHIPPING_CHARGE_INSIDE_DHAKA`, `SHIPPING_CHARGE_OUTSIDE_DHAKA` | Default shipping charges (BDT); shipping zones are seeded at startup. |
 | `UNPAID_ORDER_CANCEL_MINUTES` | Age after which unpaid SSLCommerz orders are cancelled and reserved stock is released. |
-| `ADMIN_DEFAULT_EMAIL`, `ADMIN_DEFAULT_PASSWORD` | Admin defaults used by admin-related setup. Change the password before deployment. |
+| `ADMIN_DEFAULT_EMAIL` | Admin email used by operational alert emails and by the admin creation script; defaults to `admin@nexorafashions.com`. |
+| `ADMIN_DEFAULT_PASSWORD` | Required only when running `npm run create-admin`; there is no default password. |
 | `CRON_ORDER_CLEANUP`, `CRON_COUPON_EXPIRY`, `CRON_INVENTORY_ALERT`, `CRON_DAILY_REPORT`, `CRON_CLEAR_OTPS` | Cron expressions for scheduled jobs. |
 | `CRON_TIMEZONE` | Timezone used by scheduled jobs; defaults to `Asia/Dhaka`. |
 | `SWAGGER_ENABLED` | Set to `true` or `false` to enable/disable the docs UI. |
@@ -101,6 +103,16 @@ npm start
 # Production start (the package script uses NODE_ENV=production)
 npm run start:prod
 ```
+
+### Create or promote an admin
+
+Set `ADMIN_DEFAULT_EMAIL` and a unique `ADMIN_DEFAULT_PASSWORD` in `.env`, then run:
+
+```bash
+npm run create-admin
+```
+
+The script connects to MongoDB and creates the user if needed, or promotes the matching user to the `admin` role and marks the email verified. It hashes the configured password through the User model's pre-save hook. In production, it refuses the legacy default password `Admin@123456`. Remove the password from `.env` after the one-time setup if you do not need to run the script again.
 
 On boot the service connects to MongoDB, attempts to seed default shipping zones, starts listening, and initializes scheduled jobs. Local base URLs with the default port:
 

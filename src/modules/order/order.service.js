@@ -13,6 +13,17 @@ const AppError = require('../../utils/AppError');
 const logger = require('../../utils/logger');
 const { calculatePagination, getSkip, sanitizePhoneNumber } = require('../../utils/helpers');
 
+const ORDER_STATUS_TRANSITIONS = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['processing', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped: ['delivered'],
+  delivered: ['return_requested'],
+  return_requested: ['returned'],
+  cancelled: [],
+  returned: [],
+};
+
 // Reserve stock and create the order atomically.
 async function checkout(userId, sessionId, data) {
   const { shippingAddress, paymentMethod, couponCode, notes } = data;
@@ -167,33 +178,66 @@ async function getOrderById(userId, orderId) {
   return order;
 }
 
-async function cancelOrder(userId, orderId, reason) {
-  const order = await Order.findOne({ _id: orderId, user: userId });
-  if (!order) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
-  if (!['pending', 'confirmed'].includes(order.orderStatus)) {
-    throw new AppError('This order cannot be cancelled at this stage', StatusCodes.BAD_REQUEST);
-  }
-
+async function _cancelOrder(orderId, reason, updatedBy, userId = null) {
   const session = await mongoose.startSession();
-  session.startTransaction();
   try {
-    for (const item of order.items) {
-      await releaseStock(item.variant.toString(), item.quantity, session, order.orderNumber);
+    session.startTransaction();
+    const orderFilter = { _id: orderId };
+    if (userId) orderFilter.user = userId;
+    const currentOrder = await Order.findOne(orderFilter).session(session);
+    if (!currentOrder) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
+    if (!ORDER_STATUS_TRANSITIONS[currentOrder.orderStatus]?.includes('cancelled')) {
+      throw new AppError('This order cannot be cancelled at this stage', StatusCodes.BAD_REQUEST);
     }
-    order.orderStatus = 'cancelled';
-    order.cancelReason = reason;
-    order.statusHistory.push({ status: 'cancelled', note: reason, updatedAt: new Date() });
-    await order.save({ session });
-    await Payment.findOneAndUpdate({ order: orderId }, { status: 'cancelled' }, { session });
+
+    let paymentStatus = currentOrder.paymentStatus;
+    const payment = await Payment.findOne({ order: orderId }).session(session);
+    if (payment?.status === 'completed') {
+      const refundPending = await Payment.findOneAndUpdate(
+        { _id: payment._id, status: 'completed' },
+        { $set: { refundStatus: 'pending' } },
+        { session, new: true },
+      );
+      if (!refundPending) throw new AppError('Payment changed while cancelling order.', StatusCodes.CONFLICT);
+      paymentStatus = 'paid';
+    } else if (payment && ['pending', 'failed'].includes(payment.status)) {
+      const cancelledPayment = await Payment.findOneAndUpdate(
+        { _id: payment._id, status: payment.status },
+        { $set: { status: 'cancelled' } },
+        { session, new: true },
+      );
+      if (!cancelledPayment) throw new AppError('Payment changed while cancelling order.', StatusCodes.CONFLICT);
+      paymentStatus = payment.status === 'failed' ? 'failed' : 'pending';
+    } else if (payment?.status === 'refunded') {
+      paymentStatus = 'refunded';
+    }
+
+    const cancelledOrder = await Order.findOneAndUpdate(
+      { ...orderFilter, orderStatus: currentOrder.orderStatus },
+      {
+        $set: { orderStatus: 'cancelled', cancelReason: reason, paymentStatus },
+        $push: { statusHistory: { status: 'cancelled', note: reason, updatedBy, updatedAt: new Date() } },
+      },
+      { session, new: true, runValidators: true },
+    );
+    if (!cancelledOrder) throw new AppError('Order status changed; refresh and try again.', StatusCodes.CONFLICT);
+
+    for (const item of cancelledOrder.items) {
+      await releaseStock(String(item.variant), item.quantity, session, cancelledOrder.orderNumber);
+    }
     await session.commitTransaction();
-    session.endSession();
-    logger.info('Order cancelled by customer', { orderId, userId });
-    return order;
+    logger.info('Order cancelled', { orderId, userId, updatedBy, paymentStatus });
+    return cancelledOrder;
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
+    if (session.inTransaction()) await session.abortTransaction();
     throw err;
+  } finally {
+    await session.endSession();
   }
+}
+
+async function cancelOrder(userId, orderId, reason) {
+  return _cancelOrder(orderId, reason, userId, userId);
 }
 
 async function getAdminOrders(query = {}) {
@@ -220,26 +264,49 @@ async function getAdminOrders(query = {}) {
 }
 
 async function updateOrderStatus(orderId, status, note, adminId) {
-  const order = await Order.findById(orderId);
-  if (!order) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
+  if (status === 'cancelled') return _cancelOrder(orderId, note || 'Cancelled by admin', adminId);
 
-  order.orderStatus = status;
-  order.statusHistory.push({ status, note: note || '', updatedBy: adminId, updatedAt: new Date() });
-
-  if (status === 'delivered') {
-    order.paymentStatus = order.paymentMethod === 'cod' ? 'paid' : order.paymentStatus;
-    order.shipping.deliveredAt = new Date();
-    order.returnDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    if (order.paymentMethod === 'cod') {
-      await Payment.findOneAndUpdate({ order: orderId }, { status: 'completed', paidAt: new Date() });
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const currentOrder = await Order.findById(orderId).session(session);
+    if (!currentOrder) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
+    if (!ORDER_STATUS_TRANSITIONS[currentOrder.orderStatus]?.includes(status)) {
+      throw new AppError('Invalid order status transition: ' + currentOrder.orderStatus + ' -> ' + status, StatusCodes.BAD_REQUEST);
     }
+
+    const now = new Date();
+    const set = { orderStatus: status };
+    if (status === 'delivered') {
+      if (currentOrder.paymentMethod === 'cod') set.paymentStatus = 'paid';
+      set['shipping.deliveredAt'] = now;
+      set.returnDeadline = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+    if (status === 'shipped') set['shipping.shippedAt'] = now;
+
+    if (status === 'delivered' && currentOrder.paymentMethod === 'cod') {
+      await Payment.findOneAndUpdate(
+        { order: orderId, status: 'pending' },
+        { $set: { status: 'completed', paidAt: now } },
+        { session, new: true },
+      );
+    }
+
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: orderId, orderStatus: currentOrder.orderStatus },
+      { $set: set, $push: { statusHistory: { status, note: note || '', updatedBy: adminId, updatedAt: now } } },
+      { session, new: true, runValidators: true },
+    );
+    if (!updatedOrder) throw new AppError('Order status changed; refresh and try again.', StatusCodes.CONFLICT);
+    await session.commitTransaction();
+    logger.info('Order status updated by admin', { orderId, status });
+    return updatedOrder;
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
   }
-
-  if (status === 'shipped') order.shipping.shippedAt = new Date();
-
-  await order.save();
-  logger.info('Order status updated by admin', { orderId, status });
-  return order;
 }
 
 async function generateInvoice(orderId) {

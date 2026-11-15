@@ -14,7 +14,7 @@ async function getWishlist(userId) {
 }
 
 async function addToWishlist(userId, productId) {
-  const product = await Product.findOne({ _id: productId, isDeleted: false });
+  const product = await Product.findOne({ _id: productId, isDeleted: false, isActive: true, status: 'active' });
   if (!product) throw new AppError('Product not found', StatusCodes.NOT_FOUND);
 
   let wishlist = await Wishlist.findOne({ user: userId });
@@ -37,8 +37,9 @@ async function removeFromWishlist(userId, productId) {
 }
 
 async function moveToCart(userId, productId, variantId, quantity) {
+  const result = await cartService.addToCart(userId, null, { productId, variantId, quantity: quantity || 1 });
   await removeFromWishlist(userId, productId);
-  return cartService.addToCart(userId, { productId, variantId, quantity: quantity || 1 });
+  return result;
 }
 
 async function clearWishlist(userId) {

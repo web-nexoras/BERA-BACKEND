@@ -37,6 +37,11 @@ const paymentSchema = new Schema(
     },
     gatewayResponse: { type: Schema.Types.Mixed, default: null }, // raw SSLCommerz IPN/callback payload
     refundAmount: { type: Number, default: 0, min: 0 },
+    refundStatus: {
+      type: String,
+      enum: ['none', 'pending', 'partial', 'refunded'],
+      default: 'none',
+    },
     refundedAt: { type: Date },
     paidAt: { type: Date },
   },

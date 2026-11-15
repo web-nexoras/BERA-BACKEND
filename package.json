@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "start:prod": "NODE_ENV=production node src/server.js",
-    "db:sync-cart-indexes": "node scripts/sync-cart-indexes.js"
+    "db:sync-cart-indexes": "node scripts/sync-cart-indexes.js",
+    "create-admin": "node scripts/create-admin.js"
   },
   "keywords": [
     "fashion",

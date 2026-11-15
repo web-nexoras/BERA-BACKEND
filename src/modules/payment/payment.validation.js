@@ -59,8 +59,14 @@ const paymentQuerySchema = z.object({
   method: z.enum(['sslcommerz', 'cod']).optional(),
 });
 
+const refundSchema = z.object({
+  orderId: objectId,
+  amount: z.coerce.number().positive('Refund amount must be greater than zero').optional(),
+});
+
 module.exports = {
   initPaymentSchema,
   sslcommerzSuccessSchema,
   paymentQuerySchema,
+  refundSchema,
 };
