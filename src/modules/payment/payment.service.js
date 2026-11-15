@@ -7,6 +7,7 @@ const { StatusCodes } = require('http-status-codes');
 const env = require('../../config/env');
 const logger = require('../../utils/logger');
 const AppError = require('../../utils/AppError');
+const { calculatePagination } = require('../../utils/helpers');
 
 // Lazy-load models to avoid circular dependencies.
 const getOrder = () => require('../order/order.model');
@@ -101,7 +102,7 @@ const initSSLCommerzPayment = async (order, user) => {
 
   await Payment.findOneAndUpdate(
     { order: order._id },
-    { order: order._id, user: user._id, method: 'sslcommerz', amount: order.pricing.total, currency: 'BDT', status: 'pending', transactionId: tranId, gatewayResponse: { sessionkey: data.sessionkey } },
+    { $set: { order: order._id, user: user._id, method: 'sslcommerz', amount: order.pricing.total, currency: 'BDT', status: 'pending', transactionId: tranId, gatewayResponse: { sessionkey: data.sessionkey } }, $unset: { valId: 1 } },
     { upsert: true, new: true },
   );
 
@@ -109,6 +110,20 @@ const initSSLCommerzPayment = async (order, user) => {
 
   logger.info('SSLCommerz session created', { tranId, gatewayUrl: data.GatewayPageURL });
   return { gatewayUrl: data.GatewayPageURL, tranId };
+};
+
+const initiatePaymentForOrder = async (userId, orderId) => {
+  const Order = getOrder();
+  const order = await Order.findOne({
+    _id: orderId, user: userId, paymentMethod: 'sslcommerz', orderStatus: 'pending',
+    paymentStatus: { $in: ['pending', 'failed'] },
+  });
+  if (!order) throw new AppError('Eligible SSLCommerz order not found.', StatusCodes.NOT_FOUND);
+
+  const User = require('../auth/auth.model');
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found.', StatusCodes.NOT_FOUND);
+  return initSSLCommerzPayment(order, user);
 };
 
 // Validate SSLCommerz callbacks before marking paid.
@@ -255,7 +270,9 @@ const getPaymentByOrder = async (orderId) => getPayment().findOne({ order: order
 
 const getMyTransactions = async (userId, query) => {
   const Payment = getPayment();
-  const { page = 1, limit = 10, status, method } = query;
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+  const { status, method } = query;
   const skip = (page - 1) * limit;
   const filter = { user: userId };
   if (status) filter.status = status;
@@ -266,12 +283,14 @@ const getMyTransactions = async (userId, query) => {
     Payment.countDocuments(filter),
   ]);
 
-  return { payments, total, page, pages: Math.ceil(total / limit) };
+  return { payments, pagination: calculatePagination(page, limit, total) };
 };
 
 const getAllTransactions = async (query) => {
   const Payment = getPayment();
-  const { page = 1, limit = 10, status, method } = query;
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+  const { status, method } = query;
   const skip = (page - 1) * limit;
   const filter = {};
   if (status) filter.status = status;
@@ -285,7 +304,7 @@ const getAllTransactions = async (query) => {
     Payment.countDocuments(filter),
   ]);
 
-  return { payments, total, page, pages: Math.ceil(total / limit) };
+  return { payments, pagination: calculatePagination(page, limit, total) };
 };
 
 const processRefund = async (orderId, amount, adminId) => {
@@ -337,7 +356,7 @@ const _markPaymentFailed = async (payment, order, sslData, reason) => {
   return markedFailed;
 };
 module.exports = {
-  initSSLCommerzPayment, verifySSLCommerzPayment,
+  initSSLCommerzPayment, initiatePaymentForOrder, verifySSLCommerzPayment,
   handleSSLCommerzFail, handleSSLCommerzCancel,
   confirmCODOrder, getPaymentByOrder, getMyTransactions, getAllTransactions, processRefund,
 };

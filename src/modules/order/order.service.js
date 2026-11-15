@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const mongoose = require('mongoose');
 const { StatusCodes } = require('http-status-codes');
@@ -27,14 +27,22 @@ async function checkout(userId, sessionId, data) {
 
   const cartQuery = userId ? { user: userId } : { sessionId };
   const cart = await Cart.findOne(cartQuery)
-    .populate('items.variant', 'price regularPrice stock sku size color product')
-    .populate('items.product', 'name images');
+    .populate('items.variant', 'price regularPrice stock sku size color product isActive')
+    .populate('items.product', 'name images status isDeleted isActive');
 
   if (!cart || cart.items.length === 0) throw new AppError('Your cart is empty', StatusCodes.BAD_REQUEST);
 
+  for (const item of cart.items) {
+    if (!item.product || item.product.status !== 'active' || item.product.isDeleted || item.product.isActive === false) {
+      throw new AppError('A product in your cart is no longer available. Please update your cart.', StatusCodes.CONFLICT);
+    }
+    if (!item.variant || !item.variant.isActive || item.variant.product.toString() !== item.product._id.toString()) {
+      throw new AppError('A product option in your cart is no longer available. Please update your cart.', StatusCodes.CONFLICT);
+    }
+  }
+
   const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingCharge = await getShippingCharge(shippingAddress.district);
-
   let discountAmount = 0;
   let couponId = null;
   if (couponCode) {
@@ -42,98 +50,92 @@ async function checkout(userId, sessionId, data) {
     discountAmount = disc;
     couponId = coupon._id;
   }
-
   const total = Math.max(0, subtotal + shippingCharge - discountAmount);
-
   const orderItems = cart.items.map((item) => {
     const mainImg = item.product.images?.find((i) => i.isMain) || item.product.images?.[0];
-    const unitPrice = item.variant?.price || item.price;
+    const unitPrice = item.variant.price || item.price;
     return {
-      product: item.product._id,
-      variant: item.variant._id,
-      name: item.product.name,
-      image: mainImg?.url || '',
-      size: item.variant.size || '',
-      color: item.variant.color || '',
-      sku: item.variant.sku || '',
-      quantity: item.quantity,
-      price: unitPrice,
+      product: item.product._id, variant: item.variant._id, name: item.product.name,
+      image: mainImg?.url || '', size: item.variant.size || '', color: item.variant.color || '',
+      sku: item.variant.sku || '', quantity: item.quantity, price: unitPrice,
       totalPrice: unitPrice * item.quantity,
     };
   });
 
   const session = await mongoose.startSession();
-  session.startTransaction();
+  let order;
+  let payment;
+  try {
+    session.startTransaction();
+    for (const item of cart.items) await reserveStock(item.variant._id.toString(), item.quantity, session);
+
+    [order] = await Order.create([{
+      user: userId || null,
+      guestEmail: userId ? null : (shippingAddress.email || null),
+      guestPhone: userId ? null : (shippingAddress.phone || null),
+      items: orderItems,
+      shippingAddress,
+      pricing: { subtotal, shippingCharge, discountAmount, couponCode: couponCode || null, couponId: couponId || null, total },
+      paymentMethod,
+      paymentStatus: 'pending',
+      orderStatus: paymentMethod === 'cod' ? 'confirmed' : 'pending',
+      statusHistory: [{ status: paymentMethod === 'cod' ? 'confirmed' : 'pending', note: 'Order created', updatedAt: new Date() }],
+      notes: notes || '',
+    }], { session });
+
+    [payment] = await Payment.create([{
+      order: order._id, user: userId || null, method: paymentMethod, amount: total, status: 'pending',
+    }], { session });
+
+    if (couponId) {
+      const used = await markCouponUsed(couponId, userId, session);
+      if (!used) throw new AppError('This coupon is no longer available.', StatusCodes.CONFLICT);
+    }
+    await session.commitTransaction();
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
+  }
+
+  const clearQuery = userId ? { user: userId } : { sessionId };
+  await Cart.findOneAndUpdate(clearQuery, { items: [], appliedCoupon: null });
 
   try {
-    for (const item of cart.items) {
-      await reserveStock(item.variant._id.toString(), item.quantity, session);
+    if (userId) {
+      const User = require('../auth/auth.model');
+      const user = await User.findById(userId);
+      await emailService.sendOrderConfirmationEmail(user, order);
+    } else if (shippingAddress.email) {
+      await emailService.sendOrderConfirmationEmail({ name: shippingAddress.recipientName, email: shippingAddress.email }, order);
     }
+  } catch (e) {
+    logger.error('Failed to send order confirmation email', { error: e.message });
+  }
 
-    const [order] = await Order.create(
-      [{
-        user: userId || null,
-        guestEmail: userId ? null : (shippingAddress.email || null),
-        guestPhone: userId ? null : (shippingAddress.phone || null),
-        items: orderItems,
-        shippingAddress,
-        pricing: { subtotal, shippingCharge, discountAmount, couponCode: couponCode || null, couponId: couponId || null, total },
-        paymentMethod,
-        paymentStatus: 'pending',
-        orderStatus: paymentMethod === 'cod' ? 'confirmed' : 'pending',
-        statusHistory: [{ status: paymentMethod === 'cod' ? 'confirmed' : 'pending', note: 'Order created', updatedAt: new Date() }],
-        notes: notes || '',
-      }],
-      { session },
-    );
-
-    const [payment] = await Payment.create(
-      [{ order: order._id, user: userId || null, method: paymentMethod, amount: total, status: 'pending' }],
-      { session },
-    );
-
-    await session.commitTransaction();
-    session.endSession();
-
-    if (couponId && userId) await markCouponUsed(couponId, userId);
-    const clearQuery = userId ? { user: userId } : { sessionId };
-    await Cart.findOneAndUpdate(clearQuery, { items: [], appliedCoupon: null });
-
-    // Email failure must not block checkout.
+  logger.info('Order placed', { orderId: order._id, orderNumber: order.orderNumber, paymentMethod });
+  let paymentUrl = null;
+  let paymentInitFailed = false;
+  if (paymentMethod === 'sslcommerz') {
     try {
-      if (userId) {
-        const User = require('../auth/auth.model');
-        const user = await User.findById(userId);
-        await emailService.sendOrderConfirmationEmail(user, order);
-      } else if (shippingAddress.email) {
-        // guest: best-effort email via a generic send if available
-        try { await emailService.sendOrderConfirmationEmail({ name: shippingAddress.recipientName, email: shippingAddress.email }, order); } catch {}
-      }
-    } catch (e) {
-      logger.error('Failed to send order confirmation email', { error: e.message });
-    }
-
-    logger.info('Order placed', { orderId: order._id, orderNumber: order.orderNumber, paymentMethod });
-
-    let paymentUrl = null;
-    if (paymentMethod === 'sslcommerz') {
       const paymentService = require('../payment/payment.service');
-      let user = null;
+      let user;
       if (userId) {
         const User = require('../auth/auth.model');
         user = await User.findById(userId);
       } else {
         user = { name: shippingAddress.recipientName, email: shippingAddress.email, phone: shippingAddress.phone };
       }
-      paymentUrl = await paymentService.initSSLCommerzPayment(order, user, payment._id);
+      const initialized = await paymentService.initSSLCommerzPayment(order, user);
+      paymentUrl = initialized.gatewayUrl;
+      payment.transactionId = initialized.tranId;
+    } catch (err) {
+      paymentInitFailed = true;
+      logger.error('SSLCommerz initialization failed after order commit; client can retry payment', { orderId: order._id, error: err.message });
     }
-
-    return { order, payment, paymentUrl };
-  } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
-    throw err;
   }
+  return { order, payment, paymentUrl, paymentInitFailed };
 }
 
 async function getOrders(userId, query = {}) {

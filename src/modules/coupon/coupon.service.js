@@ -74,8 +74,22 @@ async function validateCoupon(code, userId, orderAmount) {
   return { coupon, discountAmount: Math.round(discountAmount) };
 }
 
-async function markCouponUsed(couponId, userId) {
-  await Coupon.findByIdAndUpdate(couponId, { $inc: { usedCount: 1 }, $addToSet: { usedBy: userId } });
+async function markCouponUsed(couponId, userId, session) {
+  const filter = {
+    _id: couponId,
+    isActive: true,
+    $or: [
+      { usageLimit: null },
+      { $expr: { $lt: ['$usedCount', '$usageLimit'] } },
+    ],
+  };
+  if (userId) filter.usedBy = { $ne: userId };
+
+  const update = { $inc: { usedCount: 1 } };
+  if (userId) update.$addToSet = { usedBy: userId };
+  const options = { new: true };
+  if (session) options.session = session;
+  return Coupon.findOneAndUpdate(filter, update, options);
 }
 
 module.exports = { getCoupons, getCouponById, createCoupon, updateCoupon, deleteCoupon, validateCoupon, markCouponUsed };

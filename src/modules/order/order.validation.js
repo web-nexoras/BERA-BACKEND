@@ -58,6 +58,14 @@ const checkoutSchema = z.object({
     .optional()
     .nullable(),
   notes: z.string().trim().max(500, 'Notes cannot exceed 500 characters').optional(),
+}).superRefine((data, ctx) => {
+  if (data.paymentMethod === 'sslcommerz' && !data.shippingAddress.email) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['shippingAddress', 'email'],
+      message: 'Email is required for guest SSLCommerz checkout',
+    });
+  }
 });
 
 const updateOrderStatusSchema = z.object({

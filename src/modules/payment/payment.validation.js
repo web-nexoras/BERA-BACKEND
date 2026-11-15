@@ -52,9 +52,9 @@ const sslcommerzSuccessSchema = z.object({
 
 const paymentQuerySchema = z.object({
   page: positiveInt(1),
-  limit: positiveInt(10),
+  limit: positiveInt(10).max(100),
   status: z
-    .enum(['pending', 'paid', 'failed', 'refunded', 'cancelled'])
+    .enum(['pending', 'completed', 'failed', 'cancelled', 'refunded'])
     .optional(),
   method: z.enum(['sslcommerz', 'cod']).optional(),
 });
