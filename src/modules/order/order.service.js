@@ -5,25 +5,20 @@ const { StatusCodes } = require('http-status-codes');
 const Order = require('./order.model');
 const Payment = require('../payment/payment.model');
 const Cart = require('../cart/cart.model');
-const ShippingZone = require('../shipping/shipping.model');
+const shippingService = require('../shipping/shipping.service');
 const { reserveStock, releaseStock } = require('../inventory/inventory.service');
 const { markCouponUsed, validateCoupon } = require('../coupon/coupon.service');
 const emailService = require('../../services/email.service');
 const AppError = require('../../utils/AppError');
 const logger = require('../../utils/logger');
-const { calculatePagination, getSkip } = require('../../utils/helpers');
-const env = require('../../config/env');
-
-async function getShippingCharge(district = '') {
-  const zone = await ShippingZone.findOne({ districts: { $regex: district, $options: 'i' }, isActive: true });
-  if (zone) return zone.charge;
-  const isInsideDhaka = district.toLowerCase().includes('dhaka');
-  return isInsideDhaka ? env.SHIPPING_CHARGE_INSIDE_DHAKA : env.SHIPPING_CHARGE_OUTSIDE_DHAKA;
-}
+const { calculatePagination, getSkip, sanitizePhoneNumber } = require('../../utils/helpers');
 
 // Reserve stock and create the order atomically.
 async function checkout(userId, sessionId, data) {
   const { shippingAddress, paymentMethod, couponCode, notes } = data;
+  const normalizedPhone = sanitizePhoneNumber(shippingAddress.phone);
+  if (!normalizedPhone) throw new AppError('Please provide a valid Bangladeshi phone number.', StatusCodes.BAD_REQUEST);
+  shippingAddress.phone = normalizedPhone;
 
   const cartQuery = userId ? { user: userId } : { sessionId };
   const cart = await Cart.findOne(cartQuery)
@@ -36,24 +31,34 @@ async function checkout(userId, sessionId, data) {
     if (!item.product || item.product.status !== 'active' || item.product.isDeleted || item.product.isActive === false) {
       throw new AppError('A product in your cart is no longer available. Please update your cart.', StatusCodes.CONFLICT);
     }
-    if (!item.variant || !item.variant.isActive || item.variant.product.toString() !== item.product._id.toString()) {
+    if (!item.variant || !item.variant.isActive || String(item.variant.product) !== String(item.product._id)) {
       throw new AppError('A product option in your cart is no longer available. Please update your cart.', StatusCodes.CONFLICT);
+    }
+    if (Number(item.price) !== Number(item.variant.price)) {
+      throw new AppError('Prices changed, please review your cart.', StatusCodes.CONFLICT);
+    }
+    if (item.variant.stock < item.quantity) {
+      throw new AppError('A cart item is no longer available in the requested quantity.', StatusCodes.CONFLICT);
     }
   }
 
-  const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingCharge = await getShippingCharge(shippingAddress.district);
+  const checkoutItems = cart.items.map((item) => ({
+    ...item.toObject(),
+    price: item.variant.price,
+  }));
+  const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const { charge: shippingCharge } = await shippingService.getShippingCharge(shippingAddress.district);
   let discountAmount = 0;
   let couponId = null;
   if (couponCode) {
-    const { coupon, discountAmount: disc } = await validateCoupon(couponCode, userId, subtotal, cart.items);
+    const { coupon, discountAmount: disc } = await validateCoupon(couponCode, userId, subtotal, checkoutItems);
     discountAmount = disc;
     couponId = coupon._id;
   }
   const total = Math.max(0, subtotal + shippingCharge - discountAmount);
-  const orderItems = cart.items.map((item) => {
+  const orderItems = checkoutItems.map((item) => {
     const mainImg = item.product.images?.find((i) => i.isMain) || item.product.images?.[0];
-    const unitPrice = item.variant.price || item.price;
+    const unitPrice = item.price;
     return {
       product: item.product._id, variant: item.variant._id, name: item.product.name,
       image: mainImg?.url || '', size: item.variant.size || '', color: item.variant.color || '',
@@ -258,31 +263,38 @@ async function generateInvoice(orderId) {
 }
 
 async function trackOrder(orderNumber, phone, email) {
-  if (!orderNumber) throw new AppError('Order number is required', StatusCodes.BAD_REQUEST);
-  if (!phone && !email) throw new AppError('Phone or email is required for verification', StatusCodes.BAD_REQUEST);
+  const notFound = () => new AppError('Order not found', StatusCodes.NOT_FOUND);
+  if (!orderNumber || (!phone && !email)) throw notFound();
 
-  const order = await Order.findOne({ orderNumber }).populate('user', 'email phone').lean();
-  if (!order) throw new AppError('Order not found', StatusCodes.NOT_FOUND);
+  const order = await Order.findOne({ orderNumber }).populate('user', 'email').lean();
+  if (!order) throw notFound();
 
-  const orderPhone = order.shippingAddress?.phone || order.guestPhone;
-  const orderEmail = order.shippingAddress?.email || order.guestEmail || order.user?.email;
-
-  if (phone && orderPhone && phone.trim() !== String(orderPhone).trim()) {
-    throw new AppError('Verification failed', StatusCodes.FORBIDDEN);
+  const suppliedCredentials = [];
+  if (phone) {
+    const suppliedPhone = sanitizePhoneNumber(String(phone));
+    const storedPhone = sanitizePhoneNumber(order.shippingAddress?.phone || order.guestPhone);
+    suppliedCredentials.push(Boolean(suppliedPhone && storedPhone && suppliedPhone === storedPhone));
   }
-  if (email && orderEmail && email.trim().toLowerCase() !== String(orderEmail).trim().toLowerCase()) {
-    throw new AppError('Verification failed', StatusCodes.FORBIDDEN);
+  if (email) {
+    const suppliedEmail = String(email).trim().toLowerCase();
+    const storedEmail = order.shippingAddress?.email || order.guestEmail || order.user?.email;
+    suppliedCredentials.push(Boolean(storedEmail && suppliedEmail === String(storedEmail).trim().toLowerCase()));
   }
+  if (!suppliedCredentials.length || suppliedCredentials.some((matches) => !matches)) throw notFound();
 
+  const storedPhone = sanitizePhoneNumber(order.shippingAddress?.phone || order.guestPhone);
+  const maskedPhone = storedPhone ? `${storedPhone.slice(0, 3)}****${storedPhone.slice(-4)}` : null;
   return {
-    orderNumber: order.orderNumber,
-    orderStatus: order.orderStatus,
+    status: order.orderStatus,
     paymentStatus: order.paymentStatus,
-    paymentMethod: order.paymentMethod,
-    items: order.items,
-    pricing: order.pricing,
-    shippingAddress: order.shippingAddress,
-    createdAt: order.createdAt,
+    items: order.items.map(({ name, quantity, price, totalPrice }) => ({ name, quantity, price, totalPrice })),
+    totals: {
+      subtotal: order.pricing.subtotal,
+      shippingCharge: order.pricing.shippingCharge,
+      discountAmount: order.pricing.discountAmount,
+      total: order.pricing.total,
+    },
+    phone: maskedPhone,
   };
 }
 

@@ -58,10 +58,19 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many authentication attempts. Please try again in 15 minutes.' },
 });
 
+const orderTrackingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many order tracking attempts. Please try again later.' },
+});
+
 app.use('/api/', generalLimiter);
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);
 app.use('/api/v1/auth/forgot-password', authLimiter);
+app.use('/api/v1/orders/track', orderTrackingLimiter);
 
 if (env.SWAGGER_ENABLED) {
   const { swaggerSpec, swaggerUi, swaggerUiOptions } = require('./docs/swagger');

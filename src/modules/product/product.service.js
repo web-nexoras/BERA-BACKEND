@@ -75,16 +75,21 @@ async function getProducts(query = {}) {
 async function getProductById(id) {
   const cacheKey = `product:${id}`;
   const cached = await get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    if (!cached.isDeleted && cached.status === 'active') return cached;
+    await del(cacheKey);
+  }
 
-  const product = await Product.findOne({ _id: id, isDeleted: false })
+  const product = await Product.findOne({ _id: id, isDeleted: false, status: 'active' })
     .populate('category', 'name slug')
     .populate('brand', 'name logo')
     .lean();
 
   if (!product) throw new AppError('Product not found', StatusCodes.NOT_FOUND);
 
-  const variants = await ProductVariant.find({ product: id, isActive: true }).lean();
+  const variants = await ProductVariant.find({ product: id, isActive: true })
+    .select('size color colorCode price regularPrice stock sku images isActive product')
+    .lean();
   const result = { ...product, variants };
 
   await set(cacheKey, result, CACHE_TTL);
@@ -128,7 +133,7 @@ async function getBestSellers() {
 }
 
 async function getRelatedProducts(productId, limit = 8) {
-  const product = await Product.findById(productId).select('category').lean();
+  const product = await Product.findOne({ _id: productId, isDeleted: false, status: 'active' }).select('category').lean();
   if (!product) throw new AppError('Product not found', StatusCodes.NOT_FOUND);
 
   return Product.find({ category: product.category, _id: { $ne: productId }, isDeleted: false, status: 'active' }).limit(limit).lean();

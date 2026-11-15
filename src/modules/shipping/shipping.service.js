@@ -33,11 +33,18 @@ const DEFAULT_ZONES = [
 ];
 
 const getShippingCharge = async (district) => {
-  const zone = await ShippingZone.findOne({ isActive: true, districts: { $regex: new RegExp(`^${district}$`, 'i') } }).lean();
+  const normalizedDistrict = String(district || '').trim().toLowerCase();
+  const zone = normalizedDistrict
+    ? await ShippingZone.findOne({ isActive: true, districts: normalizedDistrict })
+      .collation({ locale: 'en', strength: 2 })
+      .lean()
+    : null;
   if (zone) return { zone, charge: zone.charge, estimatedDays: zone.estimatedDays };
 
   // Use Outside Dhaka when no zone matches.
-  const fallbackZone = await ShippingZone.findOne({ isActive: true, name: /outside dhaka/i }).lean();
+  const fallbackZone = await ShippingZone.findOne({ isActive: true, name: 'outside dhaka' })
+    .collation({ locale: 'en', strength: 2 })
+    .lean();
   return {
     zone: fallbackZone || null,
     charge: fallbackZone?.charge ?? (env.SHIPPING_CHARGE_OUTSIDE_DHAKA || 120),

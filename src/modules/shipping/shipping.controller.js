@@ -9,8 +9,8 @@ const getShippingZones = asyncHandler(async (req, res) =>
   successResponse(res, 'Shipping zones retrieved', await shippingService.getShippingZones()));
 
 const getShippingCharge = asyncHandler(async (req, res) => {
-  const charge = await shippingService.getShippingCharge(req.query.district || '');
-  return successResponse(res, 'Shipping charge retrieved', { charge });
+  const result = await shippingService.getShippingCharge(req.query.district);
+  return successResponse(res, 'Shipping charge retrieved', result);
 });
 
 const createZone = asyncHandler(async (req, res) =>

@@ -5,11 +5,11 @@ const router = express.Router();
 const orderController = require('./order.controller');
 const { authenticate, optionalAuth, attachSession } = require('../../middlewares/authMiddleware');
 const { isAdmin } = require('../../middlewares/adminMiddleware');
-const { validateBody, validateParams } = require('../../middlewares/validateMiddleware');
-const { checkoutSchema, updateOrderStatusSchema, cancelOrderSchema, orderIdParamSchema: orderIdSchema } = require('./order.validation');
+const { validateBody, validateParams, validateQuery } = require('../../middlewares/validateMiddleware');
+const { checkoutSchema, updateOrderStatusSchema, cancelOrderSchema, orderIdParamSchema: orderIdSchema, trackOrderQuerySchema } = require('./order.validation');
 
 // Public order tracking (guest-friendly).
-router.get('/track', orderController.trackOrder);
+router.get('/track', validateQuery(trackOrderQuerySchema), orderController.trackOrder);
 
 router.post('/checkout', optionalAuth, attachSession, validateBody(checkoutSchema), orderController.checkout);
 

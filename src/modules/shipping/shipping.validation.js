@@ -33,8 +33,8 @@ const updateZoneSchema = z
   );
 
 const getChargeSchema = z.object({
-  district: z.string().min(1, 'District is required').trim(),
-});
+  district: z.string().trim().min(2, 'District must be at least 2 characters').max(100, 'District cannot exceed 100 characters'),
+}).strict();
 
 module.exports = {
   createZoneSchema,

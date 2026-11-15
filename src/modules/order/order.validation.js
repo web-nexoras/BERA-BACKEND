@@ -110,10 +110,21 @@ const orderIdParamSchema = z.object({
   orderId: objectId,
 });
 
+const trackOrderQuerySchema = z.object({
+  orderNumber: z.string().regex(/^NF-\d{4}-[A-F0-9]{6}$/, 'Invalid order number'),
+  phone: z.string().trim().min(1).max(30).optional(),
+  email: z.string().trim().email().toLowerCase().optional(),
+}).strict().superRefine((data, ctx) => {
+  if (!data.phone && !data.email) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['phone'], message: 'Phone or email is required for verification' });
+  }
+});
+
 module.exports = {
   checkoutSchema,
   updateOrderStatusSchema,
   cancelOrderSchema,
   orderQuerySchema,
   orderIdParamSchema,
+  trackOrderQuerySchema,
 };
