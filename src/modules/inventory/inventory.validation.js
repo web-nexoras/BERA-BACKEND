@@ -17,9 +17,7 @@ const adjustStockSchema = z.object({
     .positive('Quantity must be a positive integer'),
 
   type: z.enum(INVENTORY_TYPES, {
-    errorMap: () => ({
-      message: `Type must be one of: ${INVENTORY_TYPES.join(', ')}`,
-    }),
+    error: (issue) => issue.input === undefined ? 'Movement type is required' : `Type must be one of: ${INVENTORY_TYPES.join(', ')}`,
   }),
 
   direction: z.enum(['increase', 'decrease']).optional(),

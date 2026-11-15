@@ -52,7 +52,7 @@ const sslcommerzSuccessSchema = z.object({
 
 const paymentQuerySchema = z.object({
   page: positiveInt(1),
-  limit: positiveInt(10).max(100),
+  limit: z.coerce.number().int().positive().max(100).default(10),
   status: z
     .enum(['pending', 'completed', 'failed', 'cancelled', 'refunded'])
     .optional(),

@@ -35,7 +35,6 @@ const categorySchema = new mongoose.Schema(
   },
 );
 
-categorySchema.index({ slug: 1 });
 categorySchema.index({ parent: 1 });
 categorySchema.index({ isActive: 1, sortOrder: 1 });
 

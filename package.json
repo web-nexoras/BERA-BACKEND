@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "test": "node --test test",
     "test:zod-compat": "node --test test/zod4-compat.test.js",
     "start:prod": "NODE_ENV=production node src/server.js",
     "db:sync-cart-indexes": "node scripts/sync-cart-indexes.js",
@@ -44,5 +45,9 @@
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.19.0",
     "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.2"
   }
 }

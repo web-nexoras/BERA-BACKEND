@@ -68,7 +68,6 @@ const returnSchema = new Schema(
   { timestamps: true, versionKey: false },
 );
 
-returnSchema.index({ order: 1 });
 returnSchema.index({ user: 1 });
 returnSchema.index({ status: 1 });
 returnSchema.index({ createdAt: -1 });

@@ -30,7 +30,6 @@ const brandSchema = new mongoose.Schema(
   },
 );
 
-brandSchema.index({ slug: 1 });
 brandSchema.index({ isActive: 1 });
 
 brandSchema.pre("save", async function () {
