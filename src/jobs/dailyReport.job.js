@@ -4,6 +4,7 @@ const { sendDailyReportEmail } = require('../services/email.service');
 const { redisClient, isAvailable } = require('../config/redis');
 const logger = require('../utils/logger');
 const env = require('../config/env');
+const { getDhakaParts, getDhakaDateKey } = require('../utils/dhakaTime');
 
 const LOCK_KEY = 'lock:job:dailyReport';
 const LOCK_TTL = 3600;
@@ -31,15 +32,11 @@ async function runDailyReport() {
   logger.info('[dailyReport] Generating daily report...');
   try {
     const adminService = require('../modules/admin/admin.service');
-    const stats = await adminService.getDashboardStats();
+    const now = new Date();
+    const reportDate = getDhakaDateKey(now, getDhakaParts(now).hour < 12 ? -1 : 0);
+    const stats = await adminService.getDailyReportStats(reportDate);
 
-    await sendDailyReportEmail(env.ADMIN_DEFAULT_EMAIL, {
-      ordersToday: stats.ordersToday,
-      revenueToday: stats.revenueToday,
-      newCustomersToday: stats.newCustomersToday,
-      deliveredOrders: stats.deliveredOrders,
-      cancelledOrders: stats.cancelledOrders,
-    });
+    await sendDailyReportEmail(env.ADMIN_DEFAULT_EMAIL, stats);
 
     logger.info('[dailyReport] Report sent to admin');
   } catch (err) {

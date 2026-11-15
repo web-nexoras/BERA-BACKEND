@@ -78,7 +78,7 @@ The application loads `.env` from the project working directory and validates co
 | `SSLCOMMERZ_SUCCESS_URL`, `SSLCOMMERZ_FAIL_URL`, `SSLCOMMERZ_CANCEL_URL`, `SSLCOMMERZ_IPN_URL` | Payment callback URLs. Set these to publicly reachable HTTPS endpoints in deployed environments. |
 | `CORS_ORIGINS` | Comma-separated allowlist of frontend origins. Requests without an Origin header are allowed. |
 | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX` | General and authentication rate limits. |
-| `OTP_EXPIRES_IN_MINUTES`, `PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES` | OTP and password reset expiry. |
+| `OTP_EXPIRES_IN_MINUTES`, `EMAIL_VERIFICATION_EXPIRES_HOURS`, `PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES` | OTP, email verification, and password reset expiry. |
 | `SHIPPING_CHARGE_INSIDE_DHAKA`, `SHIPPING_CHARGE_OUTSIDE_DHAKA` | Default shipping charges (BDT); shipping zones are seeded at startup. |
 | `UNPAID_ORDER_CANCEL_MINUTES` | Age after which unpaid SSLCommerz orders are cancelled and reserved stock is released. |
 | `ADMIN_DEFAULT_EMAIL` | Admin email used by operational alert emails and by the admin creation script; defaults to `admin@nexorafashions.com`. |

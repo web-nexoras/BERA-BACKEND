@@ -89,7 +89,7 @@ const PAYMENT_STATUSES = [
 
 const orderSchema = new Schema(
   {
-    orderNumber: { type: String, unique: true, trim: true }, // auto-generated NF-YYYY-XXXXXX
+    orderNumber: { type: String, unique: true, trim: true }, // auto-generated NF-YYYY-12_HEX_CHARS
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",

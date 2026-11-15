@@ -21,6 +21,11 @@ const verifyEmail = asyncHandler(async (req, res) => {
   return successResponse(res, 'Email verified successfully.', { user });
 });
 
+const resendVerificationEmail = asyncHandler(async (req, res) => {
+  await authService.resendVerificationEmail(req.body.email);
+  return successResponse(res, 'If that email exists and is not verified, a verification link has been sent.');
+});
+
 const forgotPassword = asyncHandler(async (req, res) => {
   await authService.forgotPassword(req.body.email);
   return successResponse(res, 'If that email exists, a reset link has been sent.');
@@ -50,4 +55,4 @@ const changePassword = asyncHandler(async (req, res) => {
   return successResponse(res, 'Password changed. Please log in again.');
 });
 
-module.exports = { register, login, verifyEmail, forgotPassword, resetPassword, refreshToken, logout, changePassword };
+module.exports = { register, login, verifyEmail, resendVerificationEmail, forgotPassword, resetPassword, refreshToken, logout, changePassword };

@@ -10,10 +10,10 @@ function generateOTP(length = 6) {
   return String(otp).padStart(length, '0');
 }
 
-// format: NF-YYYY-XXXXXX
+// format: NF-YYYY-XXXXXXXXXXXX
 function generateOrderNumber() {
   const year = new Date().getFullYear();
-  const suffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+  const suffix = crypto.randomBytes(6).toString('hex').toUpperCase();
   return `NF-${year}-${suffix}`;
 }
 

@@ -15,11 +15,15 @@ const {
   verifyEmailSchema,
   changePasswordSchema,
   refreshTokenSchema,
+  logoutSchema,
+  resendVerificationSchema,
 } = require('./auth.validation');
 
 router.post('/register', validateBody(registerSchema), authController.register);
 
 router.post('/login', validateBody(loginSchema), authController.login);
+
+router.post('/resend-verification', validateBody(resendVerificationSchema), authController.resendVerificationEmail);
 
 router.get(
   '/verify-email/:token',
@@ -40,9 +44,9 @@ router.post(
   authController.resetPassword,
 );
 
-router.post('/refresh-token', authController.refreshToken);
+router.post('/refresh-token', validateBody(refreshTokenSchema), authController.refreshToken);
 
-router.post('/logout', authenticate, authController.logout);
+router.post('/logout', authenticate, validateBody(logoutSchema), authController.logout);
 
 router.put(
   '/change-password',

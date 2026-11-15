@@ -10,20 +10,40 @@ const logger = require('../../utils/logger');
 const { calculatePagination, getSkip } = require('../../utils/helpers');
 
 async function getInventory(query = {}) {
-  const page = parseInt(query.page) || 1;
-  const limit = Math.min(parseInt(query.limit) || 20, 100);
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.min(Math.max(1, Number(query.limit) || 20), 100);
   const skip = getSkip(page, limit);
 
   const filter = {};
-  if (query.lowStock === 'true') {
-    filter.$expr = { $lte: ['$stock', '$lowStockThreshold'] };
+  if (query.stockStatus === 'low_stock') {
+    filter.$expr = { $and: [{ $lte: ['$stock', '$lowStockThreshold'] }, { $gt: ['$stock', 0] }] };
+  } else if (query.stockStatus === 'out_of_stock') {
+    filter.stock = 0;
+  } else if (query.stockStatus === 'in_stock') {
+    filter.stock = { $gt: 0 };
   }
-  if (query.outOfStock === 'true') filter.stock = 0;
+
+  const productFilter = {};
+  if (query.product) productFilter._id = query.product;
+  if (query.category) productFilter.category = query.category;
+  if (query.brand) productFilter.brand = query.brand;
+  if (Object.keys(productFilter).length) {
+    const productIds = await Product.find(productFilter).distinct('_id');
+    filter.product = { $in: productIds };
+  }
+
+  const sortMap = {
+    stock_asc: { stock: 1 },
+    stock_desc: { stock: -1 },
+    updated_at: { updatedAt: -1 },
+    sku: { sku: 1 },
+  };
+  const sort = sortMap[query.sort] || sortMap.stock_asc;
 
   const [variants, total] = await Promise.all([
     ProductVariant.find(filter)
-      .populate('product', 'name sku images')
-      .sort({ stock: 1 })
+      .populate('product', 'name sku images category brand')
+      .sort(sort)
       .skip(skip)
       .limit(limit)
       .lean(),
@@ -32,7 +52,6 @@ async function getInventory(query = {}) {
 
   return { variants, pagination: calculatePagination(page, limit, total) };
 }
-
 async function adjustStock(variantId, quantity, type, direction, reference, adminId, notes) {
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new AppError('Quantity must be a positive integer.', StatusCodes.BAD_REQUEST);

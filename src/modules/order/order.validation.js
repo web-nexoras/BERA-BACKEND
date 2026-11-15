@@ -111,7 +111,7 @@ const orderIdParamSchema = z.object({
 });
 
 const trackOrderQuerySchema = z.object({
-  orderNumber: z.string().regex(/^NF-\d{4}-[A-F0-9]{6}$/, 'Invalid order number'),
+  orderNumber: z.string().regex(/^NF-\d{4}-(?:[A-F0-9]{6}|[A-F0-9]{12})$/, 'Invalid order number'),
   phone: z.string().trim().min(1).max(30).optional(),
   email: z.string().trim().email().toLowerCase().optional(),
 }).strict().superRefine((data, ctx) => {

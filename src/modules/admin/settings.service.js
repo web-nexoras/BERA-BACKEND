@@ -8,7 +8,7 @@ async function getSettings() {
 
 async function updateSettings(data) {
   const settings = await Settings.getSettings();
-  Object.assign(settings, data);
+  settings.set(data);
   return settings.save();
 }
 

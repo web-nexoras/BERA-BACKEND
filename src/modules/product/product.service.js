@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { StatusCodes } = require('http-status-codes');
 const Product = require('./product.model');
@@ -19,9 +19,9 @@ function buildProductFilter(query) {
   const filter = { isDeleted: false, status: 'active' };
   if (query.category) filter.category = query.category;
   if (query.brand) filter.brand = query.brand;
-  if (query.isFeatured === 'true') filter.isFeatured = true;
-  if (query.isNewArrival === 'true') filter.isNewArrival = true;
-  if (query.isBestSeller === 'true') filter.isBestSeller = true;
+  if (query.isFeatured !== undefined) filter.isFeatured = query.isFeatured === true || query.isFeatured === 'true';
+  if (query.isNewArrival !== undefined) filter.isNewArrival = query.isNewArrival === true || query.isNewArrival === 'true';
+  if (query.isBestSeller !== undefined) filter.isBestSeller = query.isBestSeller === true || query.isBestSeller === 'true';
   if (query.search) filter.$text = { $search: query.search };
   return filter;
 }
@@ -34,6 +34,8 @@ function buildSortOption(sort) {
     price_desc: { basePrice: -1 },
     popular: { totalSold: -1 },
     rating: { averageRating: -1 },
+    name_asc: { name: 1 },
+    name_desc: { name: -1 },
   };
   return map[sort] || { createdAt: -1 };
 }
@@ -44,6 +46,49 @@ async function getProducts(query = {}) {
   const skip = getSkip(page, limit);
   const filter = buildProductFilter(query);
   const sort = buildSortOption(query.sort);
+
+  const priceRange = {};
+  if (query.minPrice !== undefined) priceRange.$gte = Number(query.minPrice);
+  if (query.maxPrice !== undefined) priceRange.$lte = Number(query.maxPrice);
+  const hasPriceRange = Object.keys(priceRange).length > 0;
+  const variantAttributeFilter = { isActive: true };
+  if (query.size) variantAttributeFilter.size = query.size;
+  if (query.color) variantAttributeFilter.color = query.color;
+  const hasVariantAttributes = Boolean(query.size || query.color || query.inStock !== undefined);
+  const variantFilter = { ...variantAttributeFilter };
+
+  if (query.inStock === true || query.inStock === 'true') {
+    variantFilter.stock = { $gt: 0 };
+  } else if (query.inStock === false || query.inStock === 'false') {
+    const collation = query.size || query.color ? { locale: 'en', strength: 2 } : undefined;
+    let matchingAttributeVariants = ProductVariant.find(variantAttributeFilter);
+    let stockedAttributeVariants = ProductVariant.find({ ...variantAttributeFilter, stock: { $gt: 0 } });
+    if (collation) {
+      matchingAttributeVariants = matchingAttributeVariants.collation(collation);
+      stockedAttributeVariants = stockedAttributeVariants.collation(collation);
+    }
+    const [matchingIds, stockedIds] = await Promise.all([
+      matchingAttributeVariants.distinct('product'),
+      stockedAttributeVariants.distinct('product'),
+    ]);
+    const stockedIdSet = new Set(stockedIds.map(String));
+    filter._id = { $in: matchingIds.filter((id) => !stockedIdSet.has(String(id))) };
+    variantFilter.stock = 0;
+  } else if (hasVariantAttributes) {
+    let matchingVariants = ProductVariant.find(variantFilter);
+    if (query.size || query.color) matchingVariants = matchingVariants.collation({ locale: 'en', strength: 2 });
+    filter._id = { $in: await matchingVariants.distinct('product') };
+  }
+  if (hasPriceRange) {
+    const variantPriceFilter = { ...variantFilter, price: priceRange };
+    let matchingPriceVariants = ProductVariant.find(variantPriceFilter);
+    if (query.size || query.color) matchingPriceVariants = matchingPriceVariants.collation({ locale: 'en', strength: 2 });
+    const matchingPriceProductIds = await matchingPriceVariants.distinct('product');
+    filter.$and = [
+      ...(filter.$and || []),
+      { $or: [{ basePrice: priceRange }, { _id: { $in: matchingPriceProductIds } }] },
+    ];
+  }
 
   const [products, total] = await Promise.all([
     Product.find(filter).populate('category', 'name slug').populate('brand', 'name logo').sort(sort).skip(skip).limit(limit).lean(),
@@ -71,7 +116,6 @@ async function getProducts(query = {}) {
 
   return { products: enriched, pagination: calculatePagination(page, limit, total) };
 }
-
 async function getProductById(id) {
   const cacheKey = `product:${id}`;
   const cached = await get(cacheKey);

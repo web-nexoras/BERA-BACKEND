@@ -38,12 +38,12 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().min(1, 'CLOUDINARY_API_SECRET is required'),
 
   BREVO_API_KEY: z.string().min(1, 'BREVO_API_KEY is required'),
-  EMAIL_FROM_NAME: z.string().default('Nexora Fashions'),
-  EMAIL_FROM_ADDRESS: z.string().email().default('noreply@nexorafashions.com'),
+  EMAIL_FROM_NAME: z.string().default('BERA Fashions'),
+  EMAIL_FROM_ADDRESS: z.string().email().default('webnexoras.bd@gmail.com'),
   EMAIL_SUPPORT_ADDRESS: z
     .string()
     .email()
-    .default('support@nexorafashions.com'),
+    .default('webnexoras.bd@gmail.com'),
 
   SSLCOMMERZ_STORE_ID: z.string().min(1, 'SSLCOMMERZ_STORE_ID is required'),
   SSLCOMMERZ_STORE_PASS: z.string().min(1, 'SSLCOMMERZ_STORE_PASS is required'),
@@ -63,6 +63,7 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
 
   OTP_EXPIRES_IN_MINUTES: z.coerce.number().int().positive().default(10),
+  EMAIL_VERIFICATION_EXPIRES_HOURS: z.coerce.number().int().positive().default(24),
   PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: z.coerce
     .number()
     .int()

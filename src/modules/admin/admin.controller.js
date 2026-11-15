@@ -6,12 +6,13 @@ const settingsService = require('./settings.service');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');
 const AppError = require('../../utils/AppError');
 const { StatusCodes } = require('http-status-codes');
+const { getDhakaYear } = require('../../utils/dhakaTime');
 
 const getDashboardStats = asyncHandler(async (req, res) =>
   successResponse(res, 'Dashboard stats', await adminService.getDashboardStats()));
 
 const getMonthlySales = asyncHandler(async (req, res) =>
-  successResponse(res, 'Monthly sales data', await adminService.getMonthlySalesData(parseInt(req.query.year))));
+  successResponse(res, 'Monthly sales data', await adminService.getMonthlySalesData(req.query.year ?? getDhakaYear())));
 
 const getRecentOrders = asyncHandler(async (req, res) =>
   successResponse(res, 'Recent orders', await adminService.getRecentOrders(parseInt(req.query.limit) || 10)));
@@ -34,7 +35,7 @@ const getCustomerById = asyncHandler(async (req, res) =>
   successResponse(res, 'Customer retrieved', await adminService.getCustomerById(req.params.id)));
 
 const blockCustomer = asyncHandler(async (req, res) =>
-  successResponse(res, 'Customer blocked', await adminService.blockCustomer(req.params.id)));
+  successResponse(res, 'Customer blocked', await adminService.blockCustomer(req.params.id, req.user.id)));
 
 const unblockCustomer = asyncHandler(async (req, res) =>
   successResponse(res, 'Customer unblocked', await adminService.unblockCustomer(req.params.id)));

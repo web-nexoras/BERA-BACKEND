@@ -89,10 +89,14 @@ const changePasswordSchema = z
   });
 
 const refreshTokenSchema = z.object({
-  refreshToken: z
-    .string({ required_error: 'Refresh token is required' })
-    .min(1, 'Refresh token is required'),
-});
+  refreshToken: z.string().min(1, 'Refresh token cannot be empty').optional(),
+}).strict().optional().default({});
+
+const logoutSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token cannot be empty').optional(),
+}).strict().optional().default({});
+
+const resendVerificationSchema = z.object({ email: emailField });
 
 module.exports = {
   registerSchema,
@@ -103,4 +107,6 @@ module.exports = {
   verifyEmailSchema,
   changePasswordSchema,
   refreshTokenSchema,
+  logoutSchema,
+  resendVerificationSchema,
 };

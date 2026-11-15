@@ -66,10 +66,22 @@ const orderTrackingLimiter = rateLimit({
   message: { success: false, message: 'Too many order tracking attempts. Please try again later.' },
 });
 
+const verificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many verification attempts. Please try again later.' },
+});
+
 app.use('/api/', generalLimiter);
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);
 app.use('/api/v1/auth/forgot-password', authLimiter);
+app.use('/api/v1/auth/reset-password', authLimiter);
+app.use('/api/v1/auth/refresh-token', authLimiter);
+app.use('/api/v1/auth/verify-email', verificationLimiter);
+app.use('/api/v1/auth/resend-verification', verificationLimiter);
 app.use('/api/v1/orders/track', orderTrackingLimiter);
 
 if (env.SWAGGER_ENABLED) {

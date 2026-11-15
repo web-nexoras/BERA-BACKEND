@@ -5,6 +5,9 @@ const env = require('../config/env');
 const logger = require('../utils/logger');
 
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[char]));
 
 async function sendEmail({ to, subject, html, text }) {
   try {
@@ -27,15 +30,16 @@ async function sendEmail({ to, subject, html, text }) {
 }
 
 async function sendVerificationEmail(user, verificationUrl) {
+  const expiryHours = env.EMAIL_VERIFICATION_EXPIRES_HOURS || 24;
   await sendEmail({
     to: { email: user.email, name: user.name },
     subject: 'Verify your email — Nexora Fashions',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-        <h2>Welcome to Nexora Fashions, ${user.name}!</h2>
+        <h2>Welcome to Nexora Fashions, ${escapeHtml(user.name)}!</h2>
         <p>Please verify your email address to get started:</p>
-        <a href="${verificationUrl}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Verify Email</a>
-        <p style="margin-top:16px;color:#666">Link expires in 24 hours. If you didn't create an account, ignore this email.</p>
+        <a href="${escapeHtml(verificationUrl)}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Verify Email</a>
+        <p style="margin-top:16px;color:#666">Link expires in ${expiryHours} hour${expiryHours === 1 ? '' : 's'}. If you didn't create an account, ignore this email.</p>
       </div>`,
   });
 }
@@ -47,9 +51,9 @@ async function sendPasswordResetEmail(user, resetUrl) {
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
         <h2>Password Reset Request</h2>
-        <p>Hi ${user.name},</p>
+        <p>Hi ${escapeHtml(user.name)},</p>
         <p>Click below to reset your password:</p>
-        <a href="${resetUrl}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Reset Password</a>
+        <a href="${escapeHtml(resetUrl)}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Reset Password</a>
         <p style="margin-top:16px;color:#666">This link expires in 30 minutes. If you didn't request this, please ignore this email.</p>
       </div>`,
   });
@@ -61,7 +65,7 @@ async function sendWelcomeEmail(user) {
     subject: 'Welcome to Nexora Fashions!',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-        <h2>You're all set, ${user.name}!</h2>
+        <h2>You're all set, ${escapeHtml(user.name)}!</h2>
         <p>Your email has been verified. Start exploring our latest collection:</p>
         <a href="${env.FRONTEND_URL}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Shop Now</a>
       </div>`,
@@ -70,16 +74,16 @@ async function sendWelcomeEmail(user) {
 
 async function sendOrderConfirmationEmail(user, order) {
   const itemsList = order.items
-    .map((i) => `<tr><td>${i.name} (${i.size || ''} ${i.color || ''})</td><td>${i.quantity}</td><td>৳${i.totalPrice}</td></tr>`)
+    .map((i) => `<tr><td>${escapeHtml(i.name)} (${escapeHtml(i.size)} ${escapeHtml(i.color)})</td><td>${escapeHtml(i.quantity)}</td><td>&#2547;${escapeHtml(i.totalPrice)}</td></tr>`)
     .join('');
 
   await sendEmail({
     to: { email: user.email, name: user.name },
-    subject: `Order Confirmed — ${order.orderNumber}`,
+    subject: `Order Confirmed — ${escapeHtml(order.orderNumber)}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
         <h2>Order Confirmed!</h2>
-        <p>Hi ${user.name}, your order <strong>${order.orderNumber}</strong> has been placed.</p>
+        <p>Hi ${escapeHtml(user.name)}, your order <strong>${escapeHtml(order.orderNumber)}</strong> has been placed.</p>
         <table border="1" cellpadding="8" style="width:100%;border-collapse:collapse">
           <thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead>
           <tbody>${itemsList}</tbody>
@@ -95,7 +99,7 @@ async function sendOrderConfirmationEmail(user, order) {
 
 async function sendLowStockAlertEmail(adminEmail, products) {
   const rows = products
-    .map((v) => `<tr><td>${v.product?.name}</td><td>${v.sku}</td><td style="color:${v.stock === 0 ? 'red' : 'orange'}">${v.stock}</td><td>${v.lowStockThreshold}</td></tr>`)
+    .map((v) => `<tr><td>${escapeHtml(v.product?.name)}</td><td>${escapeHtml(v.sku)}</td><td style="color:${v.stock === 0 ? 'red' : 'orange'}">${escapeHtml(v.stock)}</td><td>${escapeHtml(v.lowStockThreshold)}</td></tr>`)
     .join('');
 
   await sendEmail({
@@ -113,13 +117,17 @@ async function sendLowStockAlertEmail(adminEmail, products) {
 }
 
 async function sendDailyReportEmail(adminEmail, reportData) {
+  const reportDate = reportData.reportDate
+    ? new Date(`${reportData.reportDate}T12:00:00+06:00`)
+    : new Date();
+  const formattedDate = reportDate.toLocaleDateString('en-BD', { timeZone: 'Asia/Dhaka' });
   await sendEmail({
     to: adminEmail,
-    subject: `Daily Report — ${new Date().toLocaleDateString('en-BD')}`,
+    subject: `Daily Report — ${formattedDate}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
         <h2>Daily Sales Report</h2>
-        <p>Date: ${new Date().toLocaleDateString('en-BD', { timeZone: 'Asia/Dhaka' })}</p>
+        <p>Date: ${formattedDate}</p>
         <ul>
           <li><strong>Orders Today:</strong> ${reportData.ordersToday}</li>
           <li><strong>Revenue Today:</strong> ৳${reportData.revenueToday}</li>

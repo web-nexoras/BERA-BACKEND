@@ -24,6 +24,12 @@ const ORDER_STATUS_TRANSITIONS = {
   returned: [],
 };
 
+function isDuplicateOrderNumberError(err) {
+  return err?.code === 11000 && Boolean(
+    err.keyPattern?.orderNumber || err.keyValue?.orderNumber || String(err.message).includes('orderNumber_1'),
+  );
+}
+
 // Reserve stock and create the order atomically.
 async function checkout(userId, sessionId, data) {
   const { shippingAddress, paymentMethod, couponCode, notes } = data;
@@ -82,37 +88,48 @@ async function checkout(userId, sessionId, data) {
   let order;
   let payment;
   try {
-    session.startTransaction();
-    [order] = await Order.create([{
-      user: userId || null,
-      guestEmail: userId ? null : (shippingAddress.email || null),
-      guestPhone: userId ? null : (shippingAddress.phone || null),
-      items: orderItems,
-      shippingAddress,
-      pricing: { subtotal, shippingCharge, discountAmount, couponCode: couponCode || null, couponId: couponId || null, total },
-      paymentMethod,
-      paymentStatus: 'pending',
-      orderStatus: paymentMethod === 'cod' ? 'confirmed' : 'pending',
-      statusHistory: [{ status: paymentMethod === 'cod' ? 'confirmed' : 'pending', note: 'Order created', updatedAt: new Date() }],
-      notes: notes || '',
-    }], { session });
+    let committed = false;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      order = undefined;
+      payment = undefined;
+      try {
+        session.startTransaction();
+        [order] = await Order.create([{
+          user: userId || null,
+          guestEmail: userId ? null : (shippingAddress.email || null),
+          guestPhone: userId ? null : (shippingAddress.phone || null),
+          items: orderItems,
+          shippingAddress,
+          pricing: { subtotal, shippingCharge, discountAmount, couponCode: couponCode || null, couponId: couponId || null, total },
+          paymentMethod,
+          paymentStatus: 'pending',
+          orderStatus: paymentMethod === 'cod' ? 'confirmed' : 'pending',
+          statusHistory: [{ status: paymentMethod === 'cod' ? 'confirmed' : 'pending', note: 'Order created', updatedAt: new Date() }],
+          notes: notes || '',
+        }], { session });
 
-    for (const item of cart.items) {
-      await reserveStock(item.variant._id.toString(), item.quantity, session, order.orderNumber);
+        for (const item of cart.items) {
+          await reserveStock(String(item.variant._id), item.quantity, session, order.orderNumber);
+        }
+
+        [payment] = await Payment.create([{
+          order: order._id, user: userId || null, method: paymentMethod, amount: total, status: 'pending',
+        }], { session });
+
+        if (couponId) {
+          const used = await markCouponUsed(couponId, userId, session);
+          if (!used) throw new AppError('This coupon is no longer available.', StatusCodes.CONFLICT);
+        }
+        await session.commitTransaction();
+        committed = true;
+        break;
+      } catch (err) {
+        if (session.inTransaction()) await session.abortTransaction();
+        if (isDuplicateOrderNumberError(err) && attempt < 3) continue;
+        throw err;
+      }
     }
-
-    [payment] = await Payment.create([{
-      order: order._id, user: userId || null, method: paymentMethod, amount: total, status: 'pending',
-    }], { session });
-
-    if (couponId) {
-      const used = await markCouponUsed(couponId, userId, session);
-      if (!used) throw new AppError('This coupon is no longer available.', StatusCodes.CONFLICT);
-    }
-    await session.commitTransaction();
-  } catch (err) {
-    if (session.inTransaction()) await session.abortTransaction();
-    throw err;
+    if (!committed) throw new AppError('Could not create a unique order number.', StatusCodes.CONFLICT);
   } finally {
     await session.endSession();
   }

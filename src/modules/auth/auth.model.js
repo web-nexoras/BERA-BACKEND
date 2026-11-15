@@ -97,7 +97,7 @@ userSchema.methods.createEmailVerificationToken = function () {
     .update(raw)
     .digest("hex");
   this.emailVerificationTokenExpires = new Date(
-    Date.now() + (env.OTP_EXPIRES_IN_MINUTES || 10) * 60 * 1000,
+    Date.now() + (env.EMAIL_VERIFICATION_EXPIRES_HOURS || 24) * 60 * 60 * 1000,
   );
   return raw;
 };

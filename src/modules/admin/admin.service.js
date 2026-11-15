@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const Order = require('../order/order.model');
 const Payment = require('../payment/payment.model');
@@ -7,14 +7,15 @@ const ProductVariant = require('../variant/variant.model');
 const User = require('../auth/auth.model');
 const { get, set } = require('../../config/redis');
 const { calculatePagination, getSkip } = require('../../utils/helpers');
+const { StatusCodes } = require('http-status-codes');
+const AppError = require('../../utils/AppError');
+const { getDhakaDayBounds, getDhakaYear } = require('../../utils/dhakaTime');
 
 async function getDashboardStats() {
-  const cacheKey = 'admin:dashboard_stats';
+  const { start: todayStart, end: todayEnd, dateKey } = getDhakaDayBounds();
+  const cacheKey = `admin:dashboard_stats:${dateKey}`;
   const cached = await get(cacheKey);
   if (cached) return cached;
-
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const [
     totalOrders, pendingOrders, confirmedOrders, processingOrders,
@@ -35,9 +36,9 @@ async function getDashboardStats() {
     ProductVariant.countDocuments({ $expr: { $and: [{ $lte: ['$stock', '$lowStockThreshold'] }, { $gt: ['$stock', 0] }] } }),
     ProductVariant.countDocuments({ stock: 0 }),
     Payment.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-    Payment.aggregate([{ $match: { status: 'completed', createdAt: { $gte: todayStart } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-    Order.countDocuments({ createdAt: { $gte: todayStart } }),
-    User.countDocuments({ role: 'customer', createdAt: { $gte: todayStart } }),
+    Payment.aggregate([{ $match: { status: 'completed', createdAt: { $gte: todayStart, $lt: todayEnd } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    Order.countDocuments({ createdAt: { $gte: todayStart, $lt: todayEnd } }),
+    User.countDocuments({ role: 'customer', createdAt: { $gte: todayStart, $lt: todayEnd } }),
   ]);
 
   const stats = {
@@ -54,10 +55,12 @@ async function getDashboardStats() {
   return stats;
 }
 
-async function getMonthlySalesData(year = new Date().getFullYear()) {
+async function getMonthlySalesData(year = getDhakaYear()) {
+  const start = new Date(Date.UTC(year, 0, 1) - 6 * 60 * 60 * 1000);
+  const end = new Date(Date.UTC(year + 1, 0, 1) - 6 * 60 * 60 * 1000);
   const result = await Payment.aggregate([
-    { $match: { status: 'completed', createdAt: { $gte: new Date(`${year}-01-01`), $lt: new Date(`${year + 1}-01-01`) } } },
-    { $group: { _id: { $month: '$createdAt' }, revenue: { $sum: '$amount' }, count: { $sum: 1 } } },
+    { $match: { status: 'completed', createdAt: { $gte: start, $lt: end } } },
+    { $group: { _id: { $month: { date: '$createdAt', timezone: 'Asia/Dhaka' } }, revenue: { $sum: '$amount' }, count: { $sum: 1 } } },
     { $sort: { '_id': 1 } },
   ]);
 
@@ -87,14 +90,23 @@ async function getSalesReport(startDate, endDate) {
   const match = { status: 'completed' };
   if (startDate || endDate) {
     match.createdAt = {};
-    if (startDate) match.createdAt.$gte = new Date(startDate);
-    if (endDate) match.createdAt.$lte = new Date(endDate);
+    if (startDate) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) match.createdAt.$gte = getDhakaDayBounds(startDate).start;
+      else match.createdAt.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) match.createdAt.$lt = getDhakaDayBounds(endDate).end;
+      else match.createdAt.$lte = new Date(endDate);
+    }
+  } else {
+    const { start, end } = getDhakaDayBounds();
+    match.createdAt = { $gte: start, $lt: end };
   }
 
   const [revenue, orderStats] = await Promise.all([
     Payment.aggregate([
       { $match: match },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, revenue: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Dhaka' } }, revenue: { $sum: '$amount' }, count: { $sum: 1 } } },
       { $sort: { '_id': 1 } },
     ]),
     Order.aggregate([
@@ -104,6 +116,28 @@ async function getSalesReport(startDate, endDate) {
   ]);
 
   return { dailyRevenue: revenue, ordersByStatus: orderStats };
+}
+
+async function getDailyReportStats(reportDate = getDhakaDayBounds().dateKey) {
+  const { start, end } = getDhakaDayBounds(reportDate);
+  const [ordersToday, revenueResult, newCustomersToday, deliveredOrders, cancelledOrders] = await Promise.all([
+    Order.countDocuments({ createdAt: { $gte: start, $lt: end } }),
+    Payment.aggregate([
+      { $match: { status: 'completed', createdAt: { $gte: start, $lt: end } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]),
+    User.countDocuments({ role: 'customer', createdAt: { $gte: start, $lt: end } }),
+    Order.countDocuments({ 'shipping.deliveredAt': { $gte: start, $lt: end } }),
+    Order.countDocuments({ statusHistory: { $elemMatch: { status: 'cancelled', updatedAt: { $gte: start, $lt: end } } } }),
+  ]);
+  return {
+    reportDate,
+    ordersToday,
+    revenueToday: revenueResult[0]?.total || 0,
+    newCustomersToday,
+    deliveredOrders,
+    cancelledOrders,
+  };
 }
 
 async function getInventoryReport() {
@@ -131,27 +165,33 @@ async function getCustomers(query = {}) {
 }
 
 async function getCustomerById(id) {
-  const customer = await User.findById(id).lean();
-  if (!customer) throw new Error('Customer not found');
+  const customer = await User.findOne({ _id: id, role: 'customer' }).lean();
+  if (!customer) throw new AppError('Customer not found', StatusCodes.NOT_FOUND);
   const orders = await Order.find({ user: id }).sort({ createdAt: -1 }).limit(10).select('orderNumber pricing.total orderStatus createdAt').lean();
   const totalSpent = await Payment.aggregate([{ $match: { user: customer._id, status: 'completed' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]);
   return { customer, recentOrders: orders, totalSpent: totalSpent[0]?.total || 0 };
 }
 
-async function blockCustomer(id) {
-  const user = await User.findByIdAndUpdate(id, { isBlocked: true }, { new: true });
-  if (!user) throw new Error('Customer not found');
-  await User.findByIdAndUpdate(id, { refreshTokens: [] }); // invalidate sessions
+async function blockCustomer(id, adminId) {
+  if (String(id) === String(adminId)) {
+    throw new AppError('You cannot block your own admin account.', StatusCodes.FORBIDDEN);
+  }
+  const user = await User.findOneAndUpdate(
+    { _id: id, role: 'customer' },
+    { $set: { isBlocked: true, refreshTokens: [] } },
+    { new: true },
+  );
+  if (!user) throw new AppError('Customer not found', StatusCodes.NOT_FOUND);
   return user;
 }
 
 async function unblockCustomer(id) {
-  const user = await User.findByIdAndUpdate(id, { isBlocked: false }, { new: true });
-  if (!user) throw new Error('Customer not found');
+  const user = await User.findOneAndUpdate({ _id: id, role: 'customer' }, { isBlocked: false }, { new: true });
+  if (!user) throw new AppError('Customer not found', StatusCodes.NOT_FOUND);
   return user;
 }
 
 module.exports = {
   getDashboardStats, getMonthlySalesData, getRecentOrders, getBestSellingProducts,
-  getSalesReport, getInventoryReport, getCustomers, getCustomerById, blockCustomer, unblockCustomer,
+  getSalesReport, getDailyReportStats, getInventoryReport, getCustomers, getCustomerById, blockCustomer, unblockCustomer,
 };

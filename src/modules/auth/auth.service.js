@@ -78,6 +78,20 @@ async function verifyEmail(rawToken) {
   return user.toJSON();
 }
 
+async function resendVerificationEmail(email) {
+  const user = await User.findByEmail(email);
+  if (!user || user.isEmailVerified) return;
+
+  const rawToken = user.createEmailVerificationToken();
+  await user.save({ validateBeforeSave: false });
+  try {
+    const url = `${env.FRONTEND_URL}/verify-email/${rawToken}`;
+    await emailService.sendVerificationEmail(user, url);
+  } catch (err) {
+    logger.error('Verification email resend failed', { error: err.message });
+  }
+}
+
 // Don't reveal whether an email exists.
 async function forgotPassword(email) {
   const user = await User.findByEmail(email);
@@ -160,4 +174,4 @@ async function changePassword(userId, currentPassword, newPassword) {
   return user.toJSON();
 }
 
-module.exports = { register, login, verifyEmail, forgotPassword, resetPassword, refreshAccessToken, logout, changePassword };
+module.exports = { register, login, verifyEmail, resendVerificationEmail, forgotPassword, resetPassword, refreshAccessToken, logout, changePassword };
