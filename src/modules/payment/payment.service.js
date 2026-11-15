@@ -116,30 +116,25 @@ const verifySSLCommerzPayment = async (sslData) => {
   const Order = getOrder();
   const Payment = getPayment();
   const { tran_id, val_id, status } = sslData;
+  const result = (ok, order = null, payment = null, reason = null) => ({ ok, order, payment, reason });
 
   logger.info('Verifying SSLCommerz payment', { tran_id, val_id, status });
-
   const payment = await Payment.findOne({ transactionId: tran_id });
-  if (!payment) throw new AppError('Payment record not found for this transaction.', StatusCodes.NOT_FOUND);
+  if (!payment) return result(false, null, null, 'payment_not_found');
 
-  const order = await Order.findById(payment.order);
-  if (!order) throw new AppError('Order not found.', StatusCodes.NOT_FOUND);
+  let order = await Order.findById(payment.order);
+  if (!order) return result(false, null, payment, 'order_not_found');
+  if (payment.status === 'completed') return result(true, order, payment, 'already_completed');
 
-  // Skip callbacks already processed.
-  if (payment.status === 'completed') {
-    logger.info('Payment already verified — skipping duplicate IPN', { tran_id });
-    return { order, payment };
+  if (!verifyIPNHash(sslData)) {
+    logger.warn('IPN hash verification failed � callback rejected', { tran_id });
+    return result(false, order, payment, 'invalid_ipn_hash');
   }
-
-  const hashValid = verifyIPNHash(sslData);
-  if (!hashValid) logger.warn('IPN hash verification failed — possible tampering', { tran_id });
-
-  if (!['VALID', 'VALIDATED'].includes(status)) {
+  if (!['VALID', 'VALIDATED'].includes(status) || !val_id) {
     await _markPaymentFailed(payment, order, sslData, 'Payment status invalid from SSLCommerz');
-    return { order, payment };
+    return result(false, order, payment, 'invalid_callback_status');
   }
 
-  // Confirm payment with SSLCommerz.
   let validationResp;
   try {
     validationResp = await axios.get(`${getSSLBase()}/validator/api/validationserverAPI.php`, {
@@ -151,25 +146,51 @@ const verifySSLCommerzPayment = async (sslData) => {
   }
 
   const validationData = validationResp.data;
+  const validationCurrency = String(validationData?.currency_type || validationData?.currency || '').trim().toUpperCase();
+  const suppliedCurrencies = [validationData?.currency_type, validationData?.currency].filter((value) => value != null && value !== '');
+  const currencyValid = validationCurrency === 'BDT' && suppliedCurrencies.every((currency) => String(currency).trim().toUpperCase() === 'BDT');
   if (!validationData || !['VALID', 'VALIDATED'].includes(validationData.status)) {
     await _markPaymentFailed(payment, order, sslData, 'Gateway validation returned invalid status');
-    return { order, payment };
+    return result(false, order, payment, 'invalid_gateway_status');
+  }
+  if (validationData.tran_id !== payment.transactionId) {
+    await _markPaymentFailed(payment, order, sslData, 'Gateway transaction ID mismatch');
+    return result(false, order, payment, 'transaction_id_mismatch');
+  }
+  if (!currencyValid) {
+    await _markPaymentFailed(payment, order, sslData, 'Gateway currency mismatch');
+    return result(false, order, payment, 'currency_mismatch');
   }
 
-  // Reject callbacks with a mismatched amount.
-  const gatewayAmount = parseFloat(validationData.amount || 0);
-  const orderAmount = parseFloat(order.pricing.total || 0);
-  if (Math.abs(gatewayAmount - orderAmount) > 1) {
+  const gatewayAmount = Number(validationData.amount);
+  const orderAmount = Number(order.pricing.total);
+  if (!Number.isFinite(gatewayAmount) || !Number.isFinite(orderAmount) || Math.round(gatewayAmount * 100) !== Math.round(orderAmount * 100)) {
     logger.error('Payment amount mismatch', { gatewayAmount, orderAmount, tran_id });
     await _markPaymentFailed(payment, order, sslData, 'Amount mismatch detected');
-    return { order, payment };
+    return result(false, order, payment, 'amount_mismatch');
   }
 
-  payment.status = 'completed';
-  payment.paidAt = new Date();
-  payment.gatewayResponse = validationData;
-  await payment.save();
+  const alreadyUsed = await Payment.findOne({ valId: val_id, _id: { $ne: payment._id } });
+  if (alreadyUsed) {
+    logger.warn('SSLCommerz val_id already used by another payment', { tran_id, val_id, paymentId: payment._id });
+    return result(false, order, payment, 'val_id_already_used');
+  }
 
+  const updatedPayment = await Payment.findOneAndUpdate(
+    { _id: payment._id, status: 'pending' },
+    { $set: { status: 'completed', paidAt: new Date(), valId: val_id, gatewayResponse: validationData } },
+    { new: true, runValidators: true },
+  );
+  if (!updatedPayment) {
+    const currentPayment = await Payment.findById(payment._id);
+    const currentOrder = await Order.findById(payment.order);
+    return result(currentPayment?.status === 'completed', currentOrder, currentPayment, currentPayment?.status === 'completed' ? 'already_completed' : 'payment_not_pending');
+  }
+
+  payment.status = updatedPayment.status;
+  payment.paidAt = updatedPayment.paidAt;
+  payment.valId = updatedPayment.valId;
+  payment.gatewayResponse = updatedPayment.gatewayResponse;
   order.paymentStatus = 'paid';
   order.orderStatus = 'confirmed';
   order.statusHistory.push({ status: 'confirmed', note: `Payment received via SSLCommerz. Val ID: ${val_id}`, updatedAt: new Date() });
@@ -184,27 +205,28 @@ const verifySSLCommerzPayment = async (sslData) => {
   }
 
   logger.info('SSLCommerz payment verified', { tran_id, orderId: order._id });
-  return { order, payment };
+  return result(true, order, payment, null);
 };
 
 const handleSSLCommerzFail = async (sslData) => {
   const { tran_id } = sslData;
   const payment = await getPayment().findOne({ transactionId: tran_id });
-  if (!payment) { logger.warn('handleSSLCommerzFail: payment not found', { tran_id }); return { order: null, payment: null }; }
+  if (!payment) { logger.warn('handleSSLCommerzFail: payment not found', { tran_id }); return { ok: false, order: null, payment: null, reason: 'payment_not_found' }; }
   const order = await getOrder().findById(payment.order);
+  if (payment.status === 'completed') return { ok: true, order, payment, reason: 'already_completed' };
   await _markPaymentFailed(payment, order, sslData, 'Payment failed at gateway');
-  return { order, payment };
+  return { ok: false, order, payment, reason: 'payment_failed' };
 };
 
 const handleSSLCommerzCancel = async (sslData) => {
   const { tran_id } = sslData;
   const payment = await getPayment().findOne({ transactionId: tran_id });
-  if (!payment) { logger.warn('handleSSLCommerzCancel: payment not found', { tran_id }); return { order: null, payment: null }; }
+  if (!payment) { logger.warn('handleSSLCommerzCancel: payment not found', { tran_id }); return { ok: false, order: null, payment: null, reason: 'payment_not_found' }; }
   const order = await getOrder().findById(payment.order);
+  if (payment.status === 'completed') return { ok: true, order, payment, reason: 'already_completed' };
   await _markPaymentFailed(payment, order, sslData, 'Payment cancelled by customer');
-  return { order, payment };
+  return { ok: false, order, payment, reason: 'payment_cancelled' };
 };
-
 // COD stays pending until delivery.
 const confirmCODOrder = async (orderId) => {
   const Order = getOrder();
@@ -293,19 +315,27 @@ const processRefund = async (orderId, amount, adminId) => {
 
 // Mark payment failed and update the order.
 const _markPaymentFailed = async (payment, order, sslData, reason) => {
+  let markedFailed = false;
   if (payment) {
-    payment.status = 'failed';
-    payment.gatewayResponse = { ...payment.gatewayResponse, ...sslData };
-    await payment.save();
+    const updated = await getPayment().findOneAndUpdate(
+      { _id: payment._id, status: 'pending' },
+      { $set: { status: 'failed', gatewayResponse: { ...(payment.gatewayResponse || {}), ...sslData } } },
+      { new: true, runValidators: true },
+    );
+    if (updated) {
+      markedFailed = true;
+      payment.status = updated.status;
+      payment.gatewayResponse = updated.gatewayResponse;
+    }
   }
-  if (order && order.orderStatus === 'pending') {
+  if (markedFailed && order && order.orderStatus === 'pending') {
     order.paymentStatus = 'failed';
     order.statusHistory.push({ status: 'pending', note: `Payment failed: ${reason}`, updatedAt: new Date() });
     await order.save();
   }
-  logger.warn('Payment marked as failed', { tranId: sslData?.tran_id, reason });
+  if (markedFailed) logger.warn('Payment marked as failed', { tranId: sslData?.tran_id, reason });
+  return markedFailed;
 };
-
 module.exports = {
   initSSLCommerzPayment, verifySSLCommerzPayment,
   handleSSLCommerzFail, handleSSLCommerzCancel,

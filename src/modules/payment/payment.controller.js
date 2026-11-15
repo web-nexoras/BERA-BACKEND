@@ -11,23 +11,24 @@ const initiatePayment = asyncHandler(async (req, res) => {
 });
 
 const sslcommerzSuccess = asyncHandler(async (req, res) => {
-  await paymentService.verifySSLCommerzPayment(req.body);
-  res.redirect(`${process.env.FRONTEND_URL}/order/success`);
+  const result = await paymentService.verifySSLCommerzPayment(req.body);
+  res.redirect(`${process.env.FRONTEND_URL}/order/${result.ok ? 'success' : 'failed'}`);
 });
 
 const sslcommerzFail = asyncHandler(async (req, res) => {
-  await paymentService.handleSSLCommerzFail(req.body);
-  res.redirect(`${process.env.FRONTEND_URL}/order/failed`);
+  const result = await paymentService.handleSSLCommerzFail(req.body);
+  res.redirect(`${process.env.FRONTEND_URL}/order/${result.ok ? 'success' : 'failed'}`);
 });
 
 const sslcommerzCancel = asyncHandler(async (req, res) => {
-  await paymentService.handleSSLCommerzCancel(req.body);
-  res.redirect(`${process.env.FRONTEND_URL}/order/cancelled`);
+  const result = await paymentService.handleSSLCommerzCancel(req.body);
+  res.redirect(`${process.env.FRONTEND_URL}/order/${result.ok ? 'success' : 'cancelled'}`);
 });
 
 const sslcommerzIPN = asyncHandler(async (req, res) => {
-  await paymentService.verifySSLCommerzPayment(req.body);
-  return successResponse(res, 'IPN received');
+  const result = await paymentService.verifySSLCommerzPayment(req.body);
+  if (!result.ok) return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'IPN rejected', reason: result.reason });
+  return successResponse(res, 'IPN received', result);
 });
 
 const getMyTransactions = asyncHandler(async (req, res) => {

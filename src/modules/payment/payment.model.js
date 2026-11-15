@@ -12,6 +12,7 @@ const paymentSchema = new Schema(
     },
     user: { type: Schema.Types.ObjectId, ref: "User" },
     transactionId: { type: String, trim: true }, // SSLCommerz tran_id or COD reference
+    valId: { type: String, trim: true },
     method: {
       type: String,
       enum: {
@@ -45,6 +46,7 @@ const paymentSchema = new Schema(
 paymentSchema.index({ order: 1 });
 paymentSchema.index({ user: 1 });
 paymentSchema.index({ transactionId: 1 });
+paymentSchema.index({ valId: 1 }, { unique: true, sparse: true });
 paymentSchema.index({ status: 1 });
 
 const Payment = mongoose.model("Payment", paymentSchema);
