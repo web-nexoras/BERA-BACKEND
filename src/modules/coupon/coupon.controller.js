@@ -2,6 +2,8 @@
 
 const asyncHandler = require('../../utils/asyncHandler');
 const couponService = require('./coupon.service');
+const Cart = require('../cart/cart.model');
+const AppError = require('../../utils/AppError');
 const { successResponse, paginatedResponse } = require('../../utils/apiResponse');
 const { StatusCodes } = require('http-status-codes');
 
@@ -25,8 +27,11 @@ const deleteCoupon = asyncHandler(async (req, res) => {
 });
 
 const validateCoupon = asyncHandler(async (req, res) => {
-  const { code, orderAmount } = req.body;
-  const result = await couponService.validateCoupon(code, req.user.id, orderAmount);
+  const { code } = req.body;
+  const cart = await Cart.findOne({ user: req.user.id }).populate('items.product', 'category');
+  if (!cart || cart.items.length === 0) throw new AppError('Your cart is empty', StatusCodes.BAD_REQUEST);
+  const orderAmount = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const result = await couponService.validateCoupon(code, req.user.id, orderAmount, cart.items);
   return successResponse(res, 'Coupon is valid', result);
 });
 

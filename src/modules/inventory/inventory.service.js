@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { StatusCodes } = require('http-status-codes');
 const mongoose = require('mongoose');
@@ -33,32 +33,56 @@ async function getInventory(query = {}) {
   return { variants, pagination: calculatePagination(page, limit, total) };
 }
 
-async function adjustStock(variantId, quantity, type, reference, adminId, notes) {
-  const variant = await ProductVariant.findById(variantId);
-  if (!variant) throw new AppError('Variant not found', StatusCodes.NOT_FOUND);
+async function adjustStock(variantId, quantity, type, direction, reference, adminId, notes) {
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new AppError('Quantity must be a positive integer.', StatusCodes.BAD_REQUEST);
+  }
 
-  const previousStock = variant.stock;
-  const newStock = type === 'increment'
-    ? previousStock + quantity
-    : Math.max(0, previousStock - quantity);
+  const additions = ['purchase', 'return', 'initial'];
+  const subtractions = ['sale', 'damaged'];
+  const increase = additions.includes(type) || (type === 'adjustment' && direction === 'increase');
+  const decrease = subtractions.includes(type) || (type === 'adjustment' && direction === 'decrease');
+  if (!increase && !decrease) throw new AppError('A valid direction is required for adjustment.', StatusCodes.BAD_REQUEST);
 
-  variant.stock = newStock;
-  await variant.save();
+  const session = await mongoose.startSession();
+  let updatedVariant;
+  try {
+    session.startTransaction();
+    const filter = { _id: variantId };
+    if (decrease) filter.stock = { $gte: quantity };
+    updatedVariant = await ProductVariant.findOneAndUpdate(
+      filter,
+      { $inc: { stock: increase ? quantity : -quantity } },
+      { new: true, session, runValidators: true },
+    );
+    if (!updatedVariant) {
+      const exists = await ProductVariant.exists({ _id: variantId }).session(session);
+      if (!exists) throw new AppError('Variant not found', StatusCodes.NOT_FOUND);
+      throw new AppError('Insufficient stock for this adjustment.', StatusCodes.CONFLICT);
+    }
 
-  await InventoryLog.create({
-    product: variant.product,
-    variant: variantId,
-    type: type === 'increment' ? 'purchase' : 'adjustment',
-    quantity: type === 'increment' ? quantity : -quantity,
-    previousStock,
-    newStock,
-    reference,
-    performedBy: adminId,
-    notes,
-  });
+    const previousStock = updatedVariant.stock + (increase ? -quantity : quantity);
+    await InventoryLog.create([{
+      product: updatedVariant.product,
+      variant: variantId,
+      type,
+      quantity: increase ? quantity : -quantity,
+      previousStock,
+      newStock: updatedVariant.stock,
+      reference,
+      performedBy: adminId,
+      notes,
+    }], { session });
+    await session.commitTransaction();
 
-  logger.info('Stock adjusted', { variantId, type, quantity, previousStock, newStock });
-  return variant;
+    logger.info('Stock adjusted', { variantId, type, direction: increase ? 'increase' : 'decrease', quantity, previousStock, newStock: updatedVariant.stock });
+    return updatedVariant;
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
+  }
 }
 
 async function getStockHistory(variantId, query = {}) {
@@ -100,32 +124,35 @@ async function getOutOfStockProducts() {
  * @param {number} quantity
  * @param {mongoose.ClientSession} [session]
  */
-async function reserveStock(variantId, quantity, session) {
+async function reserveStock(variantId, quantity, session, reference = '') {
   const variant = await ProductVariant.findOneAndUpdate(
     { _id: variantId, stock: { $gte: quantity } },
     { $inc: { stock: -quantity } },
     { new: true, session },
   );
+  if (!variant) throw new AppError('Insufficient stock for this item. Please update your cart.', StatusCodes.CONFLICT);
 
-  if (!variant) {
-    throw new AppError('Insufficient stock for this item. Please update your cart.', StatusCodes.CONFLICT);
-  }
-
+  const previousStock = variant.stock + quantity;
+  await InventoryLog.create([{
+    product: variant.product, variant: variant._id, type: 'sale', quantity: -quantity,
+    previousStock, newStock: variant.stock, reference,
+  }], { session });
   return variant;
 }
 
-/**
- * Release reserved stock (increment) — used for cancelled orders.
- * @param {string} variantId
- * @param {number} quantity
- * @param {mongoose.ClientSession} [session]
- */
-async function releaseStock(variantId, quantity, session) {
-  await ProductVariant.findByIdAndUpdate(
-    variantId,
+async function releaseStock(variantId, quantity, session, reference = '') {
+  const variant = await ProductVariant.findOneAndUpdate(
+    { _id: variantId },
     { $inc: { stock: quantity } },
-    { session },
+    { new: true, session },
   );
+  if (!variant) throw new AppError('Variant not found', StatusCodes.NOT_FOUND);
+
+  await InventoryLog.create([{
+    product: variant.product, variant: variant._id, type: 'return', quantity,
+    previousStock: variant.stock - quantity, newStock: variant.stock, reference,
+  }], { session });
+  return variant;
 }
 
 module.exports = {

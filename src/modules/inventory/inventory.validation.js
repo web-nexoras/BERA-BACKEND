@@ -14,13 +14,15 @@ const adjustStockSchema = z.object({
   quantity: z.coerce
     .number({ required_error: 'Quantity is required' })
     .int('Quantity must be an integer')
-    .refine((v) => v !== 0, { message: 'Quantity cannot be zero' }),
+    .positive('Quantity must be a positive integer'),
 
   type: z.enum(INVENTORY_TYPES, {
     errorMap: () => ({
       message: `Type must be one of: ${INVENTORY_TYPES.join(', ')}`,
     }),
   }),
+
+  direction: z.enum(['increase', 'decrease']).optional(),
 
   reference: z
     .string()
@@ -35,6 +37,13 @@ const adjustStockSchema = z.object({
     .max(500, 'Notes must be at most 500 characters')
     .optional()
     .default(''),
+}).superRefine((data, ctx) => {
+  if (data.type === 'adjustment' && !data.direction) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['direction'], message: 'Direction is required for adjustments' });
+  }
+  if (data.type !== 'adjustment' && data.direction) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['direction'], message: 'Direction is only used for adjustments' });
+  }
 });
 
 const inventoryQuerySchema = z.object({

@@ -5,6 +5,7 @@ const Cart = require('./cart.model');
 const Product = require('../product/product.model');
 const ProductVariant = require('../variant/variant.model');
 const Coupon = require('../coupon/coupon.model');
+const { validateCoupon } = require('../coupon/coupon.service');
 const AppError = require('../../utils/AppError');
 const env = require('../../config/env');
 
@@ -98,28 +99,10 @@ async function clearCart(userId, sessionId) {
 }
 
 async function applyCoupon(userId, sessionId, code) {
-  const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
-  if (!coupon) throw new AppError('Invalid or expired coupon', StatusCodes.BAD_REQUEST);
-  if (coupon.expiresAt < new Date()) throw new AppError('Coupon has expired', StatusCodes.BAD_REQUEST);
-  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
-    throw new AppError('Coupon usage limit reached', StatusCodes.BAD_REQUEST);
-  }
-
-  const cart = await Cart.findOne(ownerQuery(userId, sessionId));
+  const cart = await Cart.findOne(ownerQuery(userId, sessionId)).populate('items.product', 'category');
   if (!cart) throw new AppError('Cart not found', StatusCodes.NOT_FOUND);
-
   const totals = cart.getTotals();
-  if (totals.subtotal < (coupon.minimumOrderAmount || 0)) {
-    throw new AppError(`Minimum order amount for this coupon is ৳${coupon.minimumOrderAmount}`, StatusCodes.BAD_REQUEST);
-  }
-
-  let discountAmount =
-    coupon.type === 'percentage'
-      ? (totals.subtotal * coupon.value) / 100
-      : coupon.value;
-
-  if (coupon.maximumDiscount) discountAmount = Math.min(discountAmount, coupon.maximumDiscount);
-
+  const { coupon, discountAmount } = await validateCoupon(code, userId, totals.subtotal, cart.items);
   cart.appliedCoupon = { code: coupon.code, discountAmount, couponId: coupon._id };
   await cart.save();
   return { cart, totals: cart.getTotals() };

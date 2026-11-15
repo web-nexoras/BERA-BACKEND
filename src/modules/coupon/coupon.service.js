@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { StatusCodes } = require('http-status-codes');
 const Coupon = require('./coupon.model');
@@ -38,6 +38,13 @@ async function createCoupon(data) {
 }
 
 async function updateCoupon(id, data) {
+  const existing = await Coupon.findById(id);
+  if (!existing) throw new AppError('Coupon not found', StatusCodes.NOT_FOUND);
+  const resultingType = data.type || existing.type;
+  const resultingValue = data.value ?? existing.value;
+  if (resultingType === 'percentage' && resultingValue > 100) {
+    throw new AppError('Percentage value cannot exceed 100', StatusCodes.BAD_REQUEST);
+  }
   const coupon = await Coupon.findByIdAndUpdate(id, data, { new: true, runValidators: true });
   if (!coupon) throw new AppError('Coupon not found', StatusCodes.NOT_FOUND);
   return coupon;
@@ -50,46 +57,68 @@ async function deleteCoupon(id) {
   await Coupon.findByIdAndDelete(id);
 }
 
-async function validateCoupon(code, userId, orderAmount) {
+function calculateDiscount(coupon, items = [], cartSubtotal = 0) {
+  const productIds = (coupon.applicableProducts || []).map(String);
+  const categoryIds = (coupon.applicableCategories || []).map(String);
+  const hasProductFilter = productIds.length > 0;
+  const hasCategoryFilter = categoryIds.length > 0;
+  const eligibleItems = items.filter((item) => {
+    if (!hasProductFilter && !hasCategoryFilter) return true;
+    const product = item.product && typeof item.product === 'object' ? item.product : null;
+    const productId = String(product?._id || item.product || '');
+    const categoryId = String(product?.category || '');
+    return (hasProductFilter && productIds.includes(productId)) || (hasCategoryFilter && categoryIds.includes(categoryId));
+  });
+  const eligibleSubtotal = items.length
+    ? eligibleItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+    : Number(cartSubtotal || 0);
+  if (eligibleSubtotal <= 0) return 0;
+
+  let discount = coupon.type === 'percentage'
+    ? (eligibleSubtotal * coupon.value) / 100
+    : Number(coupon.value);
+  if (coupon.maximumDiscount) discount = Math.min(discount, coupon.maximumDiscount);
+  return Math.min(eligibleSubtotal, Math.round(discount));
+}
+
+async function validateCoupon(code, userId, orderAmount, items = []) {
+  if (!userId) throw new AppError('Log in to use coupons.', StatusCodes.FORBIDDEN);
+  const normalizedUserId = String(userId);
   const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
   if (!coupon) throw new AppError('Invalid or inactive coupon code', StatusCodes.BAD_REQUEST);
   if (coupon.expiresAt < new Date()) throw new AppError('This coupon has expired', StatusCodes.BAD_REQUEST);
-  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+  if (coupon.usageLimit !== null && coupon.usageLimit !== undefined && coupon.usedCount >= coupon.usageLimit) {
     throw new AppError('Coupon usage limit has been reached', StatusCodes.BAD_REQUEST);
   }
-  if (coupon.usedBy.some((id) => id.toString() === userId)) {
+  if (coupon.usedBy.some((id) => String(id) === normalizedUserId)) {
     throw new AppError('You have already used this coupon', StatusCodes.BAD_REQUEST);
   }
   if (orderAmount < (coupon.minimumOrderAmount || 0)) {
-    throw new AppError(`Minimum order amount for this coupon is ৳${coupon.minimumOrderAmount}`, StatusCodes.BAD_REQUEST);
+    throw new AppError(`Minimum order amount for this coupon is à§³${coupon.minimumOrderAmount}`, StatusCodes.BAD_REQUEST);
   }
   if (coupon.isFirstOrderOnly) {
     const existingOrder = await Order.findOne({ user: userId, orderStatus: { $ne: 'cancelled' } });
     if (existingOrder) throw new AppError('This coupon is valid for first orders only', StatusCodes.BAD_REQUEST);
   }
 
-  let discountAmount = coupon.type === 'percentage' ? (orderAmount * coupon.value) / 100 : coupon.value;
-  if (coupon.maximumDiscount) discountAmount = Math.min(discountAmount, coupon.maximumDiscount);
-
-  return { coupon, discountAmount: Math.round(discountAmount) };
+  const discountAmount = calculateDiscount(coupon, items, orderAmount);
+  if (discountAmount <= 0) throw new AppError('This coupon does not apply to the items in your cart.', StatusCodes.BAD_REQUEST);
+  return { coupon, discountAmount };
 }
 
 async function markCouponUsed(couponId, userId, session) {
-  const filter = {
-    _id: couponId,
-    isActive: true,
-    $or: [
-      { usageLimit: null },
-      { $expr: { $lt: ['$usedCount', '$usageLimit'] } },
-    ],
-  };
-  if (userId) filter.usedBy = { $ne: userId };
-
-  const update = { $inc: { usedCount: 1 } };
-  if (userId) update.$addToSet = { usedBy: userId };
-  const options = { new: true };
-  if (session) options.session = session;
-  return Coupon.findOneAndUpdate(filter, update, options);
+  if (!userId) throw new AppError('Log in to use coupons.', StatusCodes.FORBIDDEN);
+  return Coupon.findOneAndUpdate(
+    {
+      _id: couponId,
+      $or: [
+        { usageLimit: null },
+        { $expr: { $lt: ['$usedCount', '$usageLimit'] } },
+      ],
+      usedBy: { $ne: userId },
+    },
+    { $inc: { usedCount: 1 }, $addToSet: { usedBy: userId } },
+    { session, new: true },
+  );
 }
-
-module.exports = { getCoupons, getCouponById, createCoupon, updateCoupon, deleteCoupon, validateCoupon, markCouponUsed };
+module.exports = { getCoupons, getCouponById, createCoupon, updateCoupon, deleteCoupon, validateCoupon, markCouponUsed, calculateDiscount };

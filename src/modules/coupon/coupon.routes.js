@@ -6,9 +6,9 @@ const couponController = require('./coupon.controller');
 const { authenticate } = require('../../middlewares/authMiddleware');
 const { isAdmin } = require('../../middlewares/adminMiddleware');
 const { validateBody, validateParams } = require('../../middlewares/validateMiddleware');
-const { createCouponSchema, updateCouponSchema, couponIdSchema } = require('./coupon.validation');
+const { createCouponSchema, updateCouponSchema, applyCouponSchema, couponIdSchema } = require('./coupon.validation');
 
-router.post('/validate', authenticate, couponController.validateCoupon);
+router.post('/validate', authenticate, validateBody(applyCouponSchema), couponController.validateCoupon);
 
 router.get('/', authenticate, isAdmin, couponController.getCoupons);
 router.get('/:id', authenticate, isAdmin, validateParams(couponIdSchema), couponController.getCouponById);

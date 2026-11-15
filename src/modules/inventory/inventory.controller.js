@@ -10,8 +10,8 @@ const getInventory = asyncHandler(async (req, res) => {
 });
 
 const adjustStock = asyncHandler(async (req, res) => {
-  const { variantId, quantity, type, reference, notes } = req.body;
-  const variant = await inventoryService.adjustStock(variantId, quantity, type, reference, req.user.id, notes);
+  const { variantId, quantity, type, direction, reference, notes } = req.body;
+  const variant = await inventoryService.adjustStock(variantId, quantity, type, direction, reference, req.user.id, notes);
   return successResponse(res, 'Stock adjusted successfully', variant);
 });
 

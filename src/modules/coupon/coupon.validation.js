@@ -90,9 +90,6 @@ const applyCouponSchema = z.object({
     .trim()
     .min(1)
     .toUpperCase(),
-  orderAmount: z
-    .number({ required_error: 'Order amount is required', invalid_type_error: 'Order amount must be a number' })
-    .min(0, 'Order amount cannot be negative'),
 });
 
 const couponIdSchema = z.object({

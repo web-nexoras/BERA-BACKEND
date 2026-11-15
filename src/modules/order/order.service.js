@@ -28,7 +28,7 @@ async function checkout(userId, sessionId, data) {
   const cartQuery = userId ? { user: userId } : { sessionId };
   const cart = await Cart.findOne(cartQuery)
     .populate('items.variant', 'price regularPrice stock sku size color product isActive')
-    .populate('items.product', 'name images status isDeleted isActive');
+    .populate('items.product', 'name images status isDeleted isActive category');
 
   if (!cart || cart.items.length === 0) throw new AppError('Your cart is empty', StatusCodes.BAD_REQUEST);
 
@@ -46,7 +46,7 @@ async function checkout(userId, sessionId, data) {
   let discountAmount = 0;
   let couponId = null;
   if (couponCode) {
-    const { coupon, discountAmount: disc } = await validateCoupon(couponCode, userId, subtotal);
+    const { coupon, discountAmount: disc } = await validateCoupon(couponCode, userId, subtotal, cart.items);
     discountAmount = disc;
     couponId = coupon._id;
   }
@@ -67,8 +67,6 @@ async function checkout(userId, sessionId, data) {
   let payment;
   try {
     session.startTransaction();
-    for (const item of cart.items) await reserveStock(item.variant._id.toString(), item.quantity, session);
-
     [order] = await Order.create([{
       user: userId || null,
       guestEmail: userId ? null : (shippingAddress.email || null),
@@ -82,6 +80,10 @@ async function checkout(userId, sessionId, data) {
       statusHistory: [{ status: paymentMethod === 'cod' ? 'confirmed' : 'pending', note: 'Order created', updatedAt: new Date() }],
       notes: notes || '',
     }], { session });
+
+    for (const item of cart.items) {
+      await reserveStock(item.variant._id.toString(), item.quantity, session, order.orderNumber);
+    }
 
     [payment] = await Payment.create([{
       order: order._id, user: userId || null, method: paymentMethod, amount: total, status: 'pending',
@@ -171,7 +173,7 @@ async function cancelOrder(userId, orderId, reason) {
   session.startTransaction();
   try {
     for (const item of order.items) {
-      await releaseStock(item.variant.toString(), item.quantity, session);
+      await releaseStock(item.variant.toString(), item.quantity, session, order.orderNumber);
     }
     order.orderStatus = 'cancelled';
     order.cancelReason = reason;

@@ -76,7 +76,7 @@ async function runOrderCleanup() {
           }
 
           for (const item of cancelledOrder.items) {
-            await releaseStock(item.variant.toString(), item.quantity, session);
+            await releaseStock(item.variant.toString(), item.quantity, session, cancelledOrder.orderNumber);
           }
           await Payment.findOneAndUpdate({ order: cancelledOrder._id }, { status: 'failed' }, { session });
           await session.commitTransaction();
