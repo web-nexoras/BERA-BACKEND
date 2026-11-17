@@ -17,7 +17,7 @@ async function acquireLock() {
 
 async function releaseLock() {
   if (!isAvailable()) return;
-  try { await redisClient.del(LOCK_KEY); } catch {}
+  try { await redisClient.del(LOCK_KEY); } catch { }
 }
 
 async function runClearOtps() {
