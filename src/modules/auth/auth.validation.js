@@ -10,7 +10,7 @@ const emailField = z
 
 const passwordField = z
   .string({ error: 'Password is required' })
-  .min(8, 'Password must be at least 8 characters')
+  .min(6, 'Password must be at least 6 characters')
   .max(128, 'Password cannot exceed 128 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')

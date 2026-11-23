@@ -1,14 +1,14 @@
 {
-  "name": "nexora-fashions-backend",
+  "name": "bera-fashion-backend",
   "version": "1.0.0",
-  "description": "Nexora Fashions — Fashion E-commerce Backend API",
+  "description": "BERA FASHION — Fashion E-commerce Backend API",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test test",
     "test:zod-compat": "node --test test/zod4-compat.test.js",
-    "start:prod": "NODE_ENV=production node src/server.js",
+    "start:prod": "node scripts/start-prod.js",
     "db:sync-cart-indexes": "node scripts/sync-cart-indexes.js",
     "create-admin": "node scripts/create-admin.js"
   },
@@ -20,7 +20,7 @@
     "express",
     "mongodb"
   ],
-  "author": "Nexora Fashions",
+  "author": "BERA FASHION",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

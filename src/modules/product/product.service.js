@@ -267,7 +267,7 @@ async function uploadProductImages(productId, files) {
 
   const uploadedImages = [];
   for (const file of files) {
-    const result = await uploadImage(file.buffer, `nexora/products/${productId}`);
+    const result = await uploadImage(file.buffer, `bera/products/${productId}`);
     uploadedImages.push({
       url: result.url,
       publicId: result.publicId,

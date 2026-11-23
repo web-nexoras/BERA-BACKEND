@@ -1,6 +1,6 @@
-﻿# Nexora Fashions Backend API
+﻿# BERA FASHION Backend API
 
-REST API backend for the Nexora Fashions e-commerce platform. It provides customer authentication, product discovery, cart and checkout, order and payment handling, inventory controls, and administrative reporting.
+REST API backend for the BERA FASHION e-commerce platform. It provides customer authentication, product discovery, cart and checkout, order and payment handling, inventory controls, and administrative reporting.
 
 ## Contents
 
@@ -81,7 +81,7 @@ The application loads `.env` from the project working directory and validates co
 | `OTP_EXPIRES_IN_MINUTES`, `EMAIL_VERIFICATION_EXPIRES_HOURS`, `PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES` | OTP, email verification, and password reset expiry. |
 | `SHIPPING_CHARGE_INSIDE_DHAKA`, `SHIPPING_CHARGE_OUTSIDE_DHAKA` | Default shipping charges (BDT); shipping zones are seeded at startup. |
 | `UNPAID_ORDER_CANCEL_MINUTES` | Age after which unpaid SSLCommerz orders are cancelled and reserved stock is released. |
-| `ADMIN_DEFAULT_EMAIL` | Admin email used by operational alert emails and by the admin creation script; defaults to `admin@nexorafashions.com`. |
+| `ADMIN_DEFAULT_EMAIL` | Admin email used by operational alert emails and by the admin creation script; defaults to `admin@berafashion.com`. |
 | `ADMIN_DEFAULT_PASSWORD` | Required only when running `npm run create-admin`; there is no default password. |
 | `CRON_ORDER_CLEANUP`, `CRON_COUPON_EXPIRY`, `CRON_INVENTORY_ALERT`, `CRON_DAILY_REPORT`, `CRON_CLEAR_OTPS` | Cron expressions for scheduled jobs. |
 | `CRON_TIMEZONE` | Timezone used by scheduled jobs; defaults to `Asia/Dhaka`. |

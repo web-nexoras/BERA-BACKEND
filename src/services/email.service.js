@@ -33,10 +33,10 @@ async function sendVerificationEmail(user, verificationUrl) {
   const expiryHours = env.EMAIL_VERIFICATION_EXPIRES_HOURS || 24;
   await sendEmail({
     to: { email: user.email, name: user.name },
-    subject: 'Verify your email — Nexora Fashions',
+    subject: 'Verify your email — BERA FASHION',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
-        <h2>Welcome to Nexora Fashions, ${escapeHtml(user.name)}!</h2>
+        <h2>Welcome to BERA FASHION, ${escapeHtml(user.name)}!</h2>
         <p>Please verify your email address to get started:</p>
         <a href="${escapeHtml(verificationUrl)}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">Verify Email</a>
         <p style="margin-top:16px;color:#666">Link expires in ${expiryHours} hour${expiryHours === 1 ? '' : 's'}. If you didn't create an account, ignore this email.</p>
@@ -47,7 +47,7 @@ async function sendVerificationEmail(user, verificationUrl) {
 async function sendPasswordResetEmail(user, resetUrl) {
   await sendEmail({
     to: { email: user.email, name: user.name },
-    subject: 'Reset your password — Nexora Fashions',
+    subject: 'Reset your password — BERA FASHION',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
         <h2>Password Reset Request</h2>
@@ -62,7 +62,7 @@ async function sendPasswordResetEmail(user, resetUrl) {
 async function sendWelcomeEmail(user) {
   await sendEmail({
     to: { email: user.email, name: user.name },
-    subject: 'Welcome to Nexora Fashions!',
+    subject: 'Welcome to BERA FASHION!',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
         <h2>You're all set, ${escapeHtml(user.name)}!</h2>

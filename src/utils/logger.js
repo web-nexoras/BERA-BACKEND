@@ -33,7 +33,7 @@ const jsonFileFormat = format.combine(timestampFormat, format.errors({ stack: tr
 const logger = createLogger({
   levels: LOG_LEVELS,
   level: LOG_LEVEL,
-  defaultMeta: { service: 'nexora-fashions-api' },
+  defaultMeta: { service: 'bera-fashion-api' },
   transports: [
     new transports.Console({
       format: prettyConsoleFormat,

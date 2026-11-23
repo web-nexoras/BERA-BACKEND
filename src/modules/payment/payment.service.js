@@ -80,7 +80,7 @@ const initSSLCommerzPayment = async (order, user) => {
     ship_country: 'Bangladesh',
     shipping_method: 'Courier',
     num_of_item: String(order.items?.length || 1),
-    product_name: 'Nexora Fashions Order',
+    product_name: 'BERA FASHION Order',
     product_category: 'Fashion & Clothing',
     product_profile: 'general',
     product_amount: order.pricing.total.toFixed(2),

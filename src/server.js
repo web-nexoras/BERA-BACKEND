@@ -28,7 +28,7 @@ async function bootstrap() {
     }
 
     const server = app.listen(env.PORT, () => {
-      logger.info(`Nexora Fashions Backend running on port ${env.PORT}`);
+      logger.info(`BERA FASHION Backend running on port ${env.PORT}`);
       logger.info(`   Environment : ${env.NODE_ENV}`);
       logger.info(`   API Base    : ${env.APP_URL}/api/v1`);
       if (env.SWAGGER_ENABLED) logger.info(`   API Docs    : ${env.APP_URL}/api-docs`);

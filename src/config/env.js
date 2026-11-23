@@ -76,7 +76,7 @@ const envSchema = z.object({
   ADMIN_DEFAULT_EMAIL: z
     .string()
     .email()
-    .default('admin@nexorafashions.com'),
+    .default('admin@berafashion.com'),
   ADMIN_DEFAULT_PASSWORD: z.string().optional(),
 
   CRON_ORDER_CLEANUP: z.string().default('*/30 * * * *'),

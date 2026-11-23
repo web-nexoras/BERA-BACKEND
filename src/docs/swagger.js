@@ -6,13 +6,13 @@ const env = require('../config/env');
 const swaggerSpec = {
   openapi: '3.0.0',
   info: {
-    title: 'Nexora Fashions API',
+    title: 'BERA FASHION API',
     version: '1.0.0',
     description:
-      'Complete Fashion E-commerce Backend API for Nexora Fashions. Built with Node.js, Express, MongoDB, Redis, and SSLCommerz.',
+      'Complete Fashion E-commerce Backend API for BERA FASHION. Built with Node.js, Express, MongoDB, Redis, and SSLCommerz.',
     contact: {
-      name: 'Nexora Fashions Support',
-      email: 'support@nexorafashions.com',
+      name: 'BERA FASHION Support',
+      email: env.EMAIL_SUPPORT_ADDRESS,
     },
   },
   servers: [
@@ -195,7 +195,7 @@ const swaggerSpec = {
         type: 'object',
         properties: {
           _id: { type: 'string' },
-          name: { type: 'string', example: 'Nexora' },
+          name: { type: 'string', example: 'BERA' },
           slug: { type: 'string' },
           logo: { type: 'string' },
           isActive: { type: 'boolean' },
@@ -812,11 +812,11 @@ const swaggerSpec = {
 };
 
 const swaggerUiOptions = {
-  customSiteTitle: 'Nexora Fashions API Docs',
+  customSiteTitle: 'BERA FASHION API Docs',
   customCss: `
     .swagger-ui .topbar { background-color: #000; }
     .swagger-ui .topbar-wrapper img { display: none; }
-    .swagger-ui .topbar-wrapper::after { content: "Nexora Fashions API"; color: white; font-size: 20px; font-weight: bold; }
+    .swagger-ui .topbar-wrapper::after { content: "BERA FASHION API"; color: white; font-size: 20px; font-weight: bold; }
   `,
   swaggerOptions: { persistAuthorization: true },
 };

@@ -4,11 +4,11 @@ const mongoose = require("mongoose");
 
 const settingsSchema = new mongoose.Schema(
   {
-    storeName: { type: String, default: "Nexora Fashions", trim: true },
+    storeName: { type: String, default: "BERA FASHION", trim: true },
     storeLogo: { type: String, default: "" },
     storeEmail: {
       type: String,
-      default: "info@nexorafashions.com",
+      default: "webnexoras.bd@gmail.com",
       trim: true,
       lowercase: true,
     },

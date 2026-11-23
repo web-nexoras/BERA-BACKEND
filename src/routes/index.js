@@ -6,7 +6,7 @@ const router = express.Router();
 router.get('/health', (req, res) => {
   res.json({
     success: true,
-    message: 'Nexora Fashions API is running',
+    message: 'BERA FASHION API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
   });
