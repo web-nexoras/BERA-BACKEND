@@ -3,6 +3,40 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(process.cwd(), '.env') });
 
+// Support the variable names used by the previous backend while keeping
+// the canonical names in this application.
+const aliases = {
+  MONGODB_URI: ['DB_URL'],
+  APP_URL: ['BASE_URL'],
+  FRONTEND_URL: ['CLIENT_URL'],
+  JWT_ACCESS_SECRET: ['JWT_SEC'],
+  JWT_REFRESH_SECRET: ['JWT_SEC'],
+  CLOUDINARY_CLOUD_NAME: ['CLOUD_NAME'],
+  CLOUDINARY_API_KEY: ['API_KEY'],
+  CLOUDINARY_API_SECRET: ['API_SECRET'],
+  EMAIL_FROM_ADDRESS: ['EMAIL_USER'],
+  SSLCOMMERZ_STORE_ID: ['SSL_STORE_ID'],
+  SSLCOMMERZ_STORE_PASS: ['SSL_STORE_PASSWORD'],
+  SSLCOMMERZ_IS_LIVE: ['SSL_IS_LIVE'],
+  SSLCOMMERZ_SUCCESS_URL: ['SSL_SUCCESS_URL'],
+  SSLCOMMERZ_FAIL_URL: ['SSL_FAIL_URL'],
+  SSLCOMMERZ_CANCEL_URL: ['SSL_CANCEL_URL'],
+};
+
+for (const [canonical, legacyNames] of Object.entries(aliases)) {
+  if (!process.env[canonical]) {
+    const legacyName = legacyNames.find((name) => process.env[name]);
+    if (legacyName) process.env[canonical] = process.env[legacyName];
+  }
+}
+
+for (const name of ['APP_URL', 'FRONTEND_URL', 'SSLCOMMERZ_SUCCESS_URL', 'SSLCOMMERZ_FAIL_URL', 'SSLCOMMERZ_CANCEL_URL', 'SSLCOMMERZ_IPN_URL']) {
+  const value = process.env[name];
+  if (value && !/^https?:\/\//i.test(value)) {
+    process.env[name] = `http://${value}`;
+  }
+}
+
 const { z } = require('zod');
 
 const envSchema = z.object({
@@ -49,10 +83,10 @@ const envSchema = z.object({
   SSLCOMMERZ_STORE_ID: z.string().min(1, 'SSLCOMMERZ_STORE_ID is required'),
   SSLCOMMERZ_STORE_PASS: z.string().min(1, 'SSLCOMMERZ_STORE_PASS is required'),
   SSLCOMMERZ_IS_LIVE: z.string().default('false').transform((v) => v === 'true'),
-  SSLCOMMERZ_SUCCESS_URL: z.string().url().optional().default(''),
-  SSLCOMMERZ_FAIL_URL: z.string().url().optional().default(''),
-  SSLCOMMERZ_CANCEL_URL: z.string().url().optional().default(''),
-  SSLCOMMERZ_IPN_URL: z.string().url().optional().default(''),
+  SSLCOMMERZ_SUCCESS_URL: z.string().url().or(z.literal('')).optional().default(''),
+  SSLCOMMERZ_FAIL_URL: z.string().url().or(z.literal('')).optional().default(''),
+  SSLCOMMERZ_CANCEL_URL: z.string().url().or(z.literal('')).optional().default(''),
+  SSLCOMMERZ_IPN_URL: z.string().url().or(z.literal('')).optional().default(''),
 
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 
@@ -111,7 +145,18 @@ if (!_parsed.success) {
 
 const env = _parsed.data;
 
-env.CORS_ORIGINS_LIST = env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+const frontendOrigin = (() => {
+  try {
+    return new URL(env.FRONTEND_URL).origin;
+  } catch {
+    return '';
+  }
+})();
+
+env.CORS_ORIGINS_LIST = Array.from(new Set([
+  ...env.CORS_ORIGINS.split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean),
+  ...(frontendOrigin ? [frontendOrigin] : []),
+]));
 
 env.IS_PRODUCTION = env.NODE_ENV === 'production';
 

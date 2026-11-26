@@ -22,12 +22,12 @@ const sslcommerzSuccess = asyncHandler(async (req, res) => {
 
 const sslcommerzFail = asyncHandler(async (req, res) => {
   const result = await paymentService.handleSSLCommerzFail(req.body);
-  res.redirect(`${process.env.FRONTEND_URL}/order/${result.ok ? 'success' : 'failed'}`);
+  res.redirect(`${env.FRONTEND_URL}/order/${result.ok ? 'success' : 'failed'}`);
 });
 
 const sslcommerzCancel = asyncHandler(async (req, res) => {
   const result = await paymentService.handleSSLCommerzCancel(req.body);
-  res.redirect(`${process.env.FRONTEND_URL}/order/${result.ok ? 'success' : 'cancelled'}`);
+  res.redirect(`${env.FRONTEND_URL}/order/${result.ok ? 'success' : 'cancelled'}`);
 });
 
 const sslcommerzIPN = asyncHandler(async (req, res) => {
